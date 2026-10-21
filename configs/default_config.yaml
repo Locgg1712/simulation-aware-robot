@@ -1,0 +1,20 @@
+# configs/default_config.yaml
+world:
+  width: 20.0               # Chiều rộng bản đồ thực (m)
+  height: 20.0              # Chiều cao bản đồ thực (m)
+  dt: 0.1                   # Bước thời gian mô phỏng cố định (s) - 10 Hz
+  grid_resolution: 0.25     # Độ phân giải ô lưới nền (m) -> Lưới 80x80
+  max_steps: 600            # Số bước tối đa cho 1 episode (60 giây)
+
+robot:
+  radius: 0.35              # Bán kính robot R_robot (m)
+  v_max: 1.0                # Vận tốc dài tối đa (m/s)
+  omega_max: 1.04719755     # Vận tốc góc tối đa (~ pi/3 rad/s)
+  sensor_radius: 6.0        # Bán kính cảm biến R_sensor (m)
+  num_lidar_rays: 16        # Số tia Raycast quét 360 độ quanh robot
+  goal_radius: 0.45         # Bán kính vùng đích (m)
+  lookahead_dist: 2.5       # Khoảng cách chọn Local Sub-goal trên đường A* (m)
+
+visualization:
+  window_size: 800          # Kích thước cửa sổ Pygame (pixels) -> 40 px / mét
+  fps: 30                   # Tốc độ khung hình khi chạy tương tác
