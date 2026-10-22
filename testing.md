@@ -25,6 +25,7 @@ pip install -r requirements.txt
 | `3` | Chuyển sang **Baseline 2** (`A* + Social Rules`) | Kiểm thử Phase 4 |
 | `4` | Chuyển sang **RL Policy** (`PPO / DQN`) | Kiểm thử Phase 6 |
 | `D` | Bật / Tắt **Debug Mode** | Hiển thị LiDAR, Grid, A*, Social Space |
+| `H` | Bật / Tắt **HUD Panel** | Ẩn/hiện bảng gỗ thông số để ngắm toàn cảnh |
 | `T` | Chuyển sang **Topology tiếp theo** ($1 \rightarrow 15$) | Kiểm thử 15 mẫu bản đồ |
 | `R` | **Reset Episode** | Sinh ngẫu nhiên kịch bản mới trên Topology hiện tại |
 | `SPACE` | **Pause / Resume** | Tạm dừng để quan sát thông số trên HUD |

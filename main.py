@@ -209,6 +209,8 @@ def main():
                     world.next_topology()
                     episode_reward = 0.0
                     renderer.update_rl_telemetry(0.0, 0.0, {})
+                elif event.key == pygame.K_h:
+                    renderer.show_hud = not renderer.show_hud
                 elif event.key in (pygame.K_1, pygame.K_2, pygame.K_3, pygame.K_4):
                     renderer.agent_mode = event.key - pygame.K_0
                     world.use_social_astar = renderer.agent_mode in (3, 4)

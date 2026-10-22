@@ -1,0 +1,5 @@
+baseline_name,split,episodes,success_rate,collision_rate,timeout_rate,navigation_time,path_length,social_intrusion_ratio,group_splitting_count,smart_wait_count,mean_reward
+Baseline 1: A* + Basic Avoidance,val,50,46.0,54.0,0.0,17.15,15.75,9.02,0.18,3.38,-16.36
+Baseline 2: A* + Social Rules,val,50,64.0,36.0,0.0,17.93,15.92,6.89,0.1,6.42,30.12
+Baseline 3: A* + RL (No Social Context),val,50,0.0,12.0,88.0,53.71,0.42,0.53,0.02,15.7,-38.21
+Baseline 4: A* + RL (Full Context),val,50,0.0,30.0,70.0,47.23,2.0,0.72,0.02,7.92,-54.08

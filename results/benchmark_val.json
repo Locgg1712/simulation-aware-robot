@@ -1,0 +1,62 @@
+[
+  {
+    "episodes": 50,
+    "success_rate": 46.0,
+    "collision_rate": 54.0,
+    "timeout_rate": 0.0,
+    "navigation_time": 17.15,
+    "path_length": 15.75,
+    "social_intrusion_ratio": 9.02,
+    "group_splitting_count": 0.18,
+    "smart_wait_count": 3.38,
+    "mean_reward": -16.36,
+    "baseline_id": "baseline_1",
+    "baseline_name": "Baseline 1: A* + Basic Avoidance",
+    "split": "val"
+  },
+  {
+    "episodes": 50,
+    "success_rate": 64.0,
+    "collision_rate": 36.0,
+    "timeout_rate": 0.0,
+    "navigation_time": 17.93,
+    "path_length": 15.92,
+    "social_intrusion_ratio": 6.89,
+    "group_splitting_count": 0.1,
+    "smart_wait_count": 6.42,
+    "mean_reward": 30.12,
+    "baseline_id": "baseline_2",
+    "baseline_name": "Baseline 2: A* + Social Rules",
+    "split": "val"
+  },
+  {
+    "episodes": 50,
+    "success_rate": 0.0,
+    "collision_rate": 12.0,
+    "timeout_rate": 88.0,
+    "navigation_time": 53.71,
+    "path_length": 0.42,
+    "social_intrusion_ratio": 0.53,
+    "group_splitting_count": 0.02,
+    "smart_wait_count": 15.7,
+    "mean_reward": -38.21,
+    "baseline_id": "baseline_3",
+    "baseline_name": "Baseline 3: A* + RL (No Social Context)",
+    "split": "val"
+  },
+  {
+    "episodes": 50,
+    "success_rate": 0.0,
+    "collision_rate": 30.0,
+    "timeout_rate": 70.0,
+    "navigation_time": 47.23,
+    "path_length": 2.0,
+    "social_intrusion_ratio": 0.72,
+    "group_splitting_count": 0.02,
+    "smart_wait_count": 7.92,
+    "mean_reward": -54.08,
+    "baseline_id": "baseline_4",
+    "baseline_name": "Baseline 4: A* + RL (Full Context)",
+    "split": "val"
+  }
+]
