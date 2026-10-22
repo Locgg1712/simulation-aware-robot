@@ -7,7 +7,14 @@ from objects.static_object import StaticObject, ShapeType
 from objects.semi_static_object import SemiStaticObject
 from objects.dynamic_object import DynamicObject
 from objects.robot import Robot, RobotAction
+from human.human_agent import HumanAgent
+from human.groups import HumanGroup
+from human.motion_model import update_humans_motion
+from human.social_space import evaluate_social_violations
+from behavior.context_classifier import classify_all_humans_context
 from perception.ground_truth import extract_local_perception
+from planning.astar import AStarPlanner
+from planning.subgoal_selector import SubgoalSelector
 from .physics import check_robot_full_collision, cast_lidar_rays
 from .topology import TOPOLOGY_NAMES
 from .map_generator import MapGenerator
@@ -17,7 +24,8 @@ from .spawn_manager import SpawnManager
 class World:
     """
     Quản lý môi trường 2D kết hợp Bản đồ lưới (Occupancy Grid),
-    15 Topology Procedural, Semi-static Doors và Dynamic Objects.
+    15 Topology Procedural, Semi-static Doors, Dynamic Objects, Humans,
+    Global A* Path Planner & Sliding Local Sub-goal (Phase 4).
     """
 
     def __init__(self, config: dict):
@@ -36,16 +44,37 @@ class World:
         self.occupancy_grid = np.zeros((self.grid_rows, self.grid_cols), dtype=np.int8)
 
         self.robot_cfg = robot_cfg
+        self.lookahead_dist: float = float(robot_cfg.get("lookahead_dist", 2.5))
+
         self.map_generator = MapGenerator(self.width, self.height)
         self.spawn_manager = SpawnManager(self.width, self.height, self.grid_res)
+        self.astar_planner = AStarPlanner(self.width, self.height, self.grid_res)
+        self.subgoal_selector = SubgoalSelector(lookahead_dist=self.lookahead_dist)
 
-        self.current_topology_id: int = 7  # Mặc định khởi động ở Topology 7 (Single Door Room) để thấy ngay cửa bán tĩnh + vật thể động
-        self.num_dynamic_objects: int = int(world_cfg.get("num_dynamic_objects", 3))
+        self.current_topology_id: int = 8
+        self.num_dynamic_objects: int = int(world_cfg.get("num_dynamic_objects", 2))
+        self.num_individual_humans: int = int(world_cfg.get("num_individual_humans", 3))
+        self.num_interacting_groups: int = int(world_cfg.get("num_interacting_groups", 1))
+        self.num_walking_groups: int = int(world_cfg.get("num_walking_groups", 1))
+
+        # Cờ cho phép A* tính cả chi phí vùng O-Space khi chạy Baseline 2 (Social A*)
+        self.use_social_astar: bool = False
+        self.replan_interval: int = 8
 
         self.static_objects: list[StaticObject] = []
         self.semi_static_objects: list[SemiStaticObject] = []
         self.dynamic_objects: list[DynamicObject] = []
+        self.humans: list[HumanAgent] = []
+        self.human_groups: list[HumanGroup] = []
         self.robot: Robot | None = None
+
+        self.global_path: list[tuple[float, float]] = []
+        self.subgoal_info: dict = {
+            "subgoal_x": 0.0,
+            "subgoal_y": 0.0,
+            "dist_to_subgoal": 0.0,
+            "angle_to_subgoal": 0.0,
+        }
 
         self.step_count: int = 0
         self.sim_time: float = 0.0
@@ -54,15 +83,20 @@ class World:
         self.collided_object_name: str = ""
         self.lidar_distances: list[float] = []
         self.lidar_hit_points: list[tuple[float, float]] = []
-        self.local_perception: dict = {"semi_static": [], "dynamic": []}
+        self.local_perception: dict = {"semi_static": [], "dynamic": [], "humans": []}
+        self.social_status: dict = {
+            "personal_intrusion": False,
+            "intruded_human_ids": [],
+            "max_social_cost": 0.0,
+            "social_penalty": 0.0,
+            "ospace_intrusion": False,
+            "group_splitting": False,
+            "group_penalty": 0.0,
+        }
 
         self.reset(topology_id=self.current_topology_id)
 
     def reset(self, seed: int | None = None, topology_id: int | None = None):
-        """
-        Sinh kịch bản mới từ `topology_id` (1..15). Nếu không truyền, giữ nguyên hoặc chọn ngẫu nhiên.
-        Đảm bảo kiểm tra khả thi đường đi (Path Feasibility Check) theo mục 10.2.
-        """
         if seed is not None:
             random.seed(seed)
             np.random.seed(seed)
@@ -76,7 +110,6 @@ class World:
         self.is_goal_reached = False
         self.collided_object_name = ""
 
-        # Thử sinh bản đồ và kiểm tra tính khả thi bằng BFS trên lưới tĩnh
         for _ in range(15):
             (
                 self.static_objects,
@@ -113,7 +146,6 @@ class World:
             goal_radius=self.robot_cfg["goal_radius"],
         )
 
-        # Sinh các vật thể động (Dynamic Objects)
         self.dynamic_objects = self.spawn_manager.spawn_dynamic_objects(
             num_objects=self.num_dynamic_objects,
             robot=self.robot,
@@ -121,16 +153,65 @@ class World:
             semi_static_objects=self.semi_static_objects,
         )
 
+        self.humans, self.human_groups = self.spawn_manager.spawn_humans_and_groups(
+            robot=self.robot,
+            static_objects=self.static_objects,
+            semi_static_objects=self.semi_static_objects,
+            dynamic_objects=self.dynamic_objects,
+            num_individual_humans=self.num_individual_humans,
+            num_interacting_groups=self.num_interacting_groups,
+            num_walking_groups=self.num_walking_groups,
+        )
+
+        classify_all_humans_context(self.humans, self.human_groups, self.robot)
         self.update_occupancy_grid()
+        self.replan_global_path()
+        self._update_subgoal()
         self._update_perception()
 
+        # Hướng mũi Robot ban đầu về phía Sub-goal đầu tiên để di chuyển mượt ngay từ t=0
+        if self.global_path:
+            self.robot.theta = math.atan2(
+                self.robot.subgoal_y - self.robot.y,
+                self.robot.subgoal_x - self.robot.x,
+            )
+            self._update_subgoal()
+            self._update_perception()
+
     def next_topology(self):
-        """Chuyển sang Topology tiếp theo (1 -> 15 -> 1)."""
         next_id = (self.current_topology_id % 15) + 1
         self.reset(topology_id=next_id)
 
+    def replan_global_path(self):
+        """Chạy A* để cập nhật Global Path từ vị trí hiện tại của Robot tới Goal."""
+        if self.robot is None:
+            return
+        self.global_path = self.astar_planner.plan(
+            start_pos=self.robot.position,
+            goal_pos=(self.robot.goal_x, self.robot.goal_y),
+            static_grid=self.static_grid,
+            semi_static_objects=self.semi_static_objects,
+            use_social_cost=self.use_social_astar,
+            humans=self.humans,
+            groups=self.human_groups,
+        )
+
+    def _update_subgoal(self):
+        """Cập nhật tọa độ Local Sub-goal trượt dọc theo đường A*."""
+        if self.robot is None:
+            return
+        self.subgoal_info = self.subgoal_selector.get_subgoal(
+            robot_x=self.robot.x,
+            robot_y=self.robot.y,
+            robot_theta=self.robot.theta,
+            global_path=self.global_path,
+            goal_x=self.robot.goal_x,
+            goal_y=self.robot.goal_y,
+        )
+        self.robot.subgoal_x = self.subgoal_info["subgoal_x"]
+        self.robot.subgoal_y = self.subgoal_info["subgoal_y"]
+
     def _build_static_grid(self):
-        """Đánh dấu các Static Objects cố định lên lưới nền."""
         self.static_grid.fill(0)
         half_res = self.grid_res / 2.0
 
@@ -152,9 +233,6 @@ class World:
                             break
 
     def update_occupancy_grid(self):
-        """
-        Cập nhật Occupancy Grid hiện tại = Static Grid + các Semi-static Objects đang đóng.
-        """
         np.copyto(self.occupancy_grid, self.static_grid)
         for door in self.semi_static_objects:
             if not door.passable:
@@ -180,7 +258,14 @@ class World:
             semi_static_objects=self.semi_static_objects,
         )
         self.local_perception = extract_local_perception(
-            self.robot, self.semi_static_objects, self.dynamic_objects
+            self.robot, self.semi_static_objects, self.dynamic_objects, self.humans
+        )
+        self.social_status = evaluate_social_violations(
+            self.robot.x,
+            self.robot.y,
+            self.robot.radius,
+            self.humans,
+            self.human_groups,
         )
 
     def step(self, action: int | RobotAction | None = None) -> dict:
@@ -190,24 +275,34 @@ class World:
         if self.is_collision or self.is_goal_reached:
             return self.get_info()
 
-        # 1. Cập nhật FSM của các Semi-static Objects (Cửa tự động / Barrier)
+        # 1. Cập nhật FSM của các Semi-static Objects
         for door in self.semi_static_objects:
             door.update(self.dt, robot_pos=self.robot.position)
-
-        # Cập nhật lại Occupancy Grid nếu cửa đổi trạng thái đóng/mở
         self.update_occupancy_grid()
 
         # 2. Cập nhật chuyển động của các Dynamic Objects
         for dyn in self.dynamic_objects:
             dyn.update(self.dt, self.static_objects, self.width, self.height)
 
-        # 3. Cập nhật vận tốc và vị trí dự kiến của Robot
+        # 3. Cập nhật chuyển động của Con người & Nhóm
+        update_humans_motion(
+            humans=self.humans,
+            groups=self.human_groups,
+            static_objects=self.static_objects,
+            semi_static_objects=self.semi_static_objects,
+            robot=self.robot,
+            dt=self.dt,
+            world_width=self.width,
+            world_height=self.height,
+        )
+
+        # 4. Cập nhật vận tốc và vị trí dự kiến của Robot
         if action is not None:
             self.robot.set_discrete_action(action)
 
         next_x, next_y, next_theta = self.robot.compute_next_pose(self.dt)
 
-        # 4. Kiểm tra va chạm với Tường tĩnh, Cửa đóng và Vật thể động
+        # 5. Kiểm tra va chạm
         collided, hit_obj = check_robot_full_collision(
             x=next_x,
             y=next_y,
@@ -217,6 +312,7 @@ class World:
             dynamic_objects=self.dynamic_objects,
             world_width=self.width,
             world_height=self.height,
+            humans=self.humans,
         )
 
         if collided:
@@ -233,6 +329,11 @@ class World:
             self.is_goal_reached = True
             self.robot.set_discrete_action(RobotAction.STOP)
 
+        # 6. Định kỳ lập lại đường đi A* và cập nhật Sliding Local Sub-goal
+        classify_all_humans_context(self.humans, self.human_groups, self.robot)
+        if self.step_count % self.replan_interval == 0:
+            self.replan_global_path()
+        self._update_subgoal()
         self._update_perception()
         return self.get_info()
 
@@ -248,7 +349,13 @@ class World:
             "robot_v": round(self.robot.v, 2),
             "robot_omega": round(self.robot.omega, 2),
             "distance_to_goal": round(self.robot.distance_to_goal(), 3),
+            "subgoal_pos": (
+                round(self.robot.subgoal_x, 2),
+                round(self.robot.subgoal_y, 2),
+            ),
+            "dist_to_subgoal": round(self.subgoal_info["dist_to_subgoal"], 2),
             "is_collision": self.is_collision,
             "collided_with": self.collided_object_name,
             "is_goal_reached": self.is_goal_reached,
+            "social_status": self.social_status,
         }

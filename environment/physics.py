@@ -1,10 +1,15 @@
 # environment/physics.py
+from __future__ import annotations
+
 import math
-from typing import Sequence
+from typing import TYPE_CHECKING, Sequence
 from objects.static_object import StaticObject, ShapeType
 from objects.semi_static_object import SemiStaticObject
-from objects.dynamic_object import DynamicObject
-from objects.base_object import BaseObject
+
+if TYPE_CHECKING:
+    from objects.dynamic_object import DynamicObject
+    from objects.base_object import BaseObject
+    from human.human_agent import HumanAgent
 
 
 def check_circle_circle_collision(
@@ -67,12 +72,14 @@ def check_robot_full_collision(
     dynamic_objects: Sequence[DynamicObject],
     world_width: float,
     world_height: float,
+    humans: Sequence[HumanAgent] = (),
 ) -> tuple[bool, BaseObject | None]:
     """
     Kiểm tra va chạm toàn diện của Robot với:
     1. Biên bản đồ & Static Objects
     2. Semi-static Objects chưa mở hoàn toàn (not passable)
     3. Dynamic Objects
+    4. Humans (Con người)
     """
     collided, static_hit = check_robot_static_collision(
         x, y, radius, static_objects, world_width, world_height
@@ -89,6 +96,10 @@ def check_robot_full_collision(
     for dyn in dynamic_objects:
         if check_circle_circle_collision(x, y, radius, dyn.x, dyn.y, dyn.radius):
             return True, dyn
+
+    for h in humans:
+        if check_circle_circle_collision(x, y, radius, h.x, h.y, h.radius):
+            return True, h
 
     return False, None
 
@@ -161,7 +172,6 @@ def cast_lidar_rays(
     world_height: float,
     semi_static_objects: Sequence[SemiStaticObject] = (),
 ) -> tuple[list[float], list[tuple[float, float]]]:
-    """Quét 16 tia Raycast nhận diện tường tĩnh và cửa bán tĩnh đang đóng."""
     distances: list[float] = []
     hit_points: list[tuple[float, float]] = []
 

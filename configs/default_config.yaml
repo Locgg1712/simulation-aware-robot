@@ -5,6 +5,10 @@ world:
   dt: 0.1                   # Bước thời gian mô phỏng cố định (s) - 10 Hz
   grid_resolution: 0.25     # Độ phân giải ô lưới nền (m) -> Lưới 80x80
   max_steps: 600            # Số bước tối đa cho 1 episode (60 giây)
+  num_dynamic_objects: 2    # Số lượng vật thể động (AGV / xe đẩy)
+  num_individual_humans: 3  # Số cá nhân đi bộ / chạy độc lập
+  num_interacting_groups: 1 # Số nhóm người đứng nói chuyện (O-Space)
+  num_walking_groups: 1     # Số nhóm người đi bộ cùng nhau
 
 robot:
   radius: 0.35              # Bán kính robot R_robot (m)
