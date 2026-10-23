@@ -10,6 +10,12 @@ from rl.reward_calculator import RewardCalculator
 from rl.state_builder import StateBuilder
 
 
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+if hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
+
 def ensure_runtime_directories():
     for folder in ("models", "logs", "results"):
         Path(folder).mkdir(parents=True, exist_ok=True)
@@ -201,6 +207,8 @@ def main():
                     renderer.paused = not renderer.paused
                 elif event.key == pygame.K_d:
                     renderer.debug_mode = not renderer.debug_mode
+                elif event.key == pygame.K_v:
+                    renderer.stardew_mode = not renderer.stardew_mode
                 elif event.key == pygame.K_r:
                     world.reset()
                     episode_reward = 0.0
