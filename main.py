@@ -217,6 +217,8 @@ def main():
                     world.next_topology()
                     episode_reward = 0.0
                     renderer.update_rl_telemetry(0.0, 0.0, {})
+                elif event.key == pygame.K_e:
+                    world.toggle_indoor_house()
                 elif event.key == pygame.K_h:
                     renderer.show_hud = not renderer.show_hud
                 elif event.key in (pygame.K_1, pygame.K_2, pygame.K_3, pygame.K_4):

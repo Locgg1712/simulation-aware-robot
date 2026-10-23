@@ -22,6 +22,7 @@ class BaseObject:
         name: str = "",
     ):
         self.id = obj_id
+        self.obj_id = obj_id
         self.x = float(x)
         self.y = float(y)
         self.radius = float(radius)
