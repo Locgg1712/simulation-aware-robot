@@ -1,0 +1,92 @@
+{
+  "iridium_meteor": {
+    "id": "iridium_meteor",
+    "title": "Mưa Sao Băng & Khoáng Thạch Tím",
+    "desc": "Một khối Khoáng Thạch Iridium lấp lánh vừa rơi xuống! Hãy tới bấm [E] thu thập.",
+    "map_id": 2,
+    "x_tile": 12.5,
+    "y_tile": 11.5,
+    "reward_gold": 120,
+    "reward_score": 80,
+    "reward_item": "golden_flower",
+    "reward_quality": 3,
+    "duration": 95.0
+  },
+  "lost_item_search": {
+    "id": "lost_item_search",
+    "title": "Tìm Túi Đồ Đánh Rơi Của Bà Evelyn",
+    "desc": "Bà Evelyn đánh rơi giỏ thảo dược ở Quảng Trường (Map 1). Hãy tới nhặt [E] giúp bà!",
+    "map_id": 1,
+    "x_tile": 19.5,
+    "y_tile": 14.5,
+    "target_npc": "Bà Evelyn",
+    "reward_gold": 75,
+    "reward_score": 70,
+    "reward_hearts": 150,
+    "duration": 90.0
+  },
+  "runaway_animals": {
+    "id": "runaway_animals",
+    "title": "Cừu Non Tinh Nghịch Đi Lạc",
+    "desc": "Một chú Cừu Non đi lạc ra đường lớn Map 2! Hãy tiếp cận an toàn và bấm [E] dẫn về chuồng.",
+    "map_id": 2,
+    "x_tile": 17.0,
+    "y_tile": 13.5,
+    "target_npc": "Nông dân Marnie",
+    "reward_gold": 85,
+    "reward_score": 65,
+    "reward_hearts": 120,
+    "duration": 85.0
+  },
+  "traveling_merchant": {
+    "id": "traveling_merchant",
+    "title": "Thương Nhân Du Mục Ghé Thăm",
+    "desc": "Xe hàng Thương Nhân Du Mục đang đỗ tại Quảng Trường Map 1! Bấm [E] nhận quà & bán giá x1.8.",
+    "map_id": 1,
+    "x_tile": 13.0,
+    "y_tile": 11.0,
+    "reward_gold": 90,
+    "reward_score": 60,
+    "reward_item": "peach",
+    "reward_quality": 2,
+    "duration": 110.0
+  },
+  "flash_express_order": {
+    "id": "flash_express_order",
+    "title": "Đơn Cấp Cứu Y Tế Khẩn Cấp [SOS]",
+    "desc": "Bác sĩ Harvey cần gấp thảo dược tại Map 1! Tới điểm tiếp nhận bấm [E] để nhận thưởng x2.",
+    "map_id": 1,
+    "x_tile": 6.5,
+    "y_tile": 9.5,
+    "target_npc": "Chủ tiệm Pierre",
+    "reward_gold": 110,
+    "reward_score": 90,
+    "reward_hearts": 100,
+    "duration": 75.0
+  },
+  "sudden_squall": {
+    "id": "sudden_squall",
+    "title": "Cơn Mưa Rào Lộc Xuân Bất Chợt",
+    "desc": "Mưa rào bất chợt giúp cây trồng lớn nhanh x2! Hãy tới kiểm tra trạm nước Map 3 bấm [E].",
+    "map_id": 3,
+    "x_tile": 13.5,
+    "y_tile": 12.0,
+    "reward_gold": 70,
+    "reward_score": 65,
+    "weather_override": "rain",
+    "duration": 80.0
+  },
+  "spontaneous_gathering": {
+    "id": "spontaneous_gathering",
+    "title": "Hội Họp Đột Xuất Giữa Quảng Trường (O-Space)",
+    "desc": "Cư dân đang tụ họp trò chuyện tại Quảng Trường Map 1. Hãy đi chậm [X] và bấm [E] chào hỏi!",
+    "map_id": 1,
+    "x_tile": 16.2,
+    "y_tile": 12.2,
+    "target_npc": "Ông George",
+    "reward_gold": 80,
+    "reward_score": 75,
+    "reward_hearts": 110,
+    "duration": 90.0
+  }
+}

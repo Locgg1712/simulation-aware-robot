@@ -1,0 +1,130 @@
+{
+  "apple": {
+    "name_vi": "Táo Đỏ Chín",
+    "category": "fruit",
+    "base_price": 35,
+    "seasons": ["summer", "fall"],
+    "energy": 25,
+    "description": "Táo đỏ giòn ngọt hái từ cây sồi xum xuê trong vườn quả."
+  },
+  "orange": {
+    "name_vi": "Cam Vàng Mọng",
+    "category": "fruit",
+    "base_price": 38,
+    "seasons": ["summer"],
+    "energy": 25,
+    "description": "Cam chín mọng nước, giàu vitamin C cho ngày nắng hè."
+  },
+  "peach": {
+    "name_vi": "Đào Tiên Hồng",
+    "category": "fruit",
+    "base_price": 45,
+    "seasons": ["spring", "summer"],
+    "energy": 30,
+    "description": "Đào tiên vỏ hồng phấn thơm ngát từ cây hoa đào cổ thụ."
+  },
+  "strawberry": {
+    "name_vi": "Dâu Tây Đỏ",
+    "category": "crop",
+    "base_price": 42,
+    "seasons": ["spring"],
+    "energy": 30,
+    "description": "Dâu tây mùa xuân chín mọng đỏ au được người dân thị trấn rất yêu thích."
+  },
+  "pumpkin": {
+    "name_vi": "Bí Ngô Vàng",
+    "category": "crop",
+    "base_price": 55,
+    "seasons": ["fall"],
+    "energy": 40,
+    "description": "Quả bí ngô mùa thu vàng ươm, nặng trĩu thích hợp nấu súp và làm bánh."
+  },
+  "tomato": {
+    "name_vi": "Cà Chua Chín",
+    "category": "crop",
+    "base_price": 36,
+    "seasons": ["summer"],
+    "energy": 20,
+    "description": "Cà chua vườn đỏ tươi mọng nước, nguyên liệu không thể thiếu trong bếp Gus."
+  },
+  "carrot": {
+    "name_vi": "Cà Rốt Tươi",
+    "category": "crop",
+    "base_price": 32,
+    "seasons": ["spring", "fall"],
+    "energy": 20,
+    "description": "Cà rốt giòn ngọt đào từ đất xốp màu mỡ của nông trại."
+  },
+  "corn": {
+    "name_vi": "Bắp Ngô Ngọt",
+    "category": "crop",
+    "base_price": 34,
+    "seasons": ["summer", "fall"],
+    "energy": 25,
+    "description": "Bắp ngô hạt vàng óng, hấp chín tỏa hương thơm ngát."
+  },
+  "cabbage": {
+    "name_vi": "Bắp Cải Xanh",
+    "category": "crop",
+    "base_price": 40,
+    "seasons": ["spring"],
+    "energy": 25,
+    "description": "Bắp cải cuốn chặt tay, tươi ngon sau những cơn mưa xuân."
+  },
+  "wheat": {
+    "name_vi": "Lúa Mì Vàng",
+    "category": "crop",
+    "base_price": 30,
+    "seasons": ["summer", "fall"],
+    "energy": 15,
+    "description": "Bông lúa mì vàng óng phơi mình dưới nắng, dùng xay bột làm bánh mì nướng."
+  },
+  "fish": {
+    "name_vi": "Cá Hồ Tươi",
+    "category": "fish",
+    "base_price": 50,
+    "seasons": ["spring", "summer", "fall", "winter"],
+    "energy": 35,
+    "description": "Cá hồ nước ngọt tươi roi rói câu từ Cầu Tàu Đảo Rừng Map 3."
+  },
+  "bread": {
+    "name_vi": "Bánh Mì Nóng",
+    "category": "special",
+    "base_price": 40,
+    "seasons": ["spring", "summer", "fall", "winter"],
+    "energy": 45,
+    "description": "Ổ bánh mì nướng giòn rụm từ lò than của tiệm Pierre và quán Saloon."
+  },
+  "parcel": {
+    "name_vi": "Kiện Hàng Nhanh",
+    "category": "special",
+    "base_price": 60,
+    "seasons": ["spring", "summer", "fall", "winter"],
+    "energy": 10,
+    "description": "Kiện hàng quan trọng cần Robot chuyển phát nhanh đến tận tay người nhận."
+  },
+  "mushroom": {
+    "name_vi": "Nấm Rừng Thơm",
+    "category": "forage",
+    "base_price": 48,
+    "seasons": ["spring", "fall"],
+    "energy": 30,
+    "description": "Nấm rừng tự nhiên mọc dưới tán thông ẩm ướt trên Đảo Rừng, hương vị đậm đà."
+  },
+  "wild_berry": {
+    "name_vi": "Quả Mọng Rừng",
+    "category": "forage",
+    "base_price": 40,
+    "seasons": ["spring", "summer"],
+    "energy": 25,
+    "description": "Quả mọng dại mọc hoang dã ven bụi cây bờ hồ, vị chua ngọt thanh mát."
+  },
+  "golden_flower": {
+    "name_vi": "Hoa Cúc Vàng",
+    "category": "forage",
+    "base_price": 65,
+    "seasons": ["spring", "fall"],
+    "energy": 35,
+    "description": "Đóa hoa cúc hoang dại nở vàng rực rỡ, món quà tao nhã mọi cư dân đều quý mến."
+  }
+}

@@ -1,0 +1,1734 @@
+{
+ "agv_front.png": [
+  64,
+  81
+ ],
+ "agv_side.png": [
+  79,
+  74
+ ],
+ "barrel.png": [
+  47,
+  71
+ ],
+ "bench.png": [
+  83,
+  59
+ ],
+ "bridge_stone.png": [
+  110,
+  87
+ ],
+ "bridge_wood.png": [
+  108,
+  85
+ ],
+ "bush_berry.png": [
+  86,
+  80
+ ],
+ "bush_green.png": [
+  84,
+  77
+ ],
+ "cabbage.png": [
+  38,
+  37
+ ],
+ "carrot.png": [
+  29,
+  39
+ ],
+ "cat.png": [
+  48,
+  60
+ ],
+ "characters/npc_01_orange_boy/die.png": [
+  264,
+  137
+ ],
+ "characters/npc_01_orange_boy/down.png": [
+  164,
+  260
+ ],
+ "characters/npc_01_orange_boy/hurt.png": [
+  207,
+  202
+ ],
+ "characters/npc_01_orange_boy/left.png": [
+  170,
+  261
+ ],
+ "characters/npc_01_orange_boy/pick_up.png": [
+  157,
+  240
+ ],
+ "characters/npc_01_orange_boy/put_down.png": [
+  192,
+  217
+ ],
+ "characters/npc_01_orange_boy/right.png": [
+  173,
+  260
+ ],
+ "characters/npc_01_orange_boy/sit.png": [
+  159,
+  250
+ ],
+ "characters/npc_01_orange_boy/sleep.png": [
+  232,
+  257
+ ],
+ "characters/npc_01_orange_boy/up.png": [
+  160,
+  260
+ ],
+ "characters/npc_02_blonde_girl/die.png": [
+  268,
+  131
+ ],
+ "characters/npc_02_blonde_girl/down.png": [
+  187,
+  256
+ ],
+ "characters/npc_02_blonde_girl/hurt.png": [
+  195,
+  204
+ ],
+ "characters/npc_02_blonde_girl/left.png": [
+  189,
+  250
+ ],
+ "characters/npc_02_blonde_girl/pick_up.png": [
+  183,
+  250
+ ],
+ "characters/npc_02_blonde_girl/put_down.png": [
+  239,
+  235
+ ],
+ "characters/npc_02_blonde_girl/right.png": [
+  181,
+  250
+ ],
+ "characters/npc_02_blonde_girl/sit.png": [
+  169,
+  265
+ ],
+ "characters/npc_02_blonde_girl/sleep.png": [
+  243,
+  260
+ ],
+ "characters/npc_02_blonde_girl/up.png": [
+  184,
+  250
+ ],
+ "characters/npc_03_purple_hair/die.png": [
+  273,
+  138
+ ],
+ "characters/npc_03_purple_hair/down.png": [
+  165,
+  225
+ ],
+ "characters/npc_03_purple_hair/hurt.png": [
+  205,
+  204
+ ],
+ "characters/npc_03_purple_hair/left.png": [
+  169,
+  219
+ ],
+ "characters/npc_03_purple_hair/pick_up.png": [
+  166,
+  236
+ ],
+ "characters/npc_03_purple_hair/put_down.png": [
+  212,
+  224
+ ],
+ "characters/npc_03_purple_hair/right.png": [
+  164,
+  219
+ ],
+ "characters/npc_03_purple_hair/sit.png": [
+  168,
+  236
+ ],
+ "characters/npc_03_purple_hair/sleep.png": [
+  247,
+  237
+ ],
+ "characters/npc_03_purple_hair/up.png": [
+  164,
+  219
+ ],
+ "characters/npc_04_green_hair/die.png": [
+  284,
+  137
+ ],
+ "characters/npc_04_green_hair/down.png": [
+  160,
+  236
+ ],
+ "characters/npc_04_green_hair/hurt.png": [
+  232,
+  209
+ ],
+ "characters/npc_04_green_hair/left.png": [
+  196,
+  238
+ ],
+ "characters/npc_04_green_hair/pick_up.png": [
+  161,
+  240
+ ],
+ "characters/npc_04_green_hair/put_down.png": [
+  201,
+  229
+ ],
+ "characters/npc_04_green_hair/right.png": [
+  193,
+  238
+ ],
+ "characters/npc_04_green_hair/sit.png": [
+  168,
+  244
+ ],
+ "characters/npc_04_green_hair/sleep.png": [
+  246,
+  236
+ ],
+ "characters/npc_04_green_hair/up.png": [
+  153,
+  233
+ ],
+ "characters/npc_05_blue_boy/die.png": [
+  296,
+  152
+ ],
+ "characters/npc_05_blue_boy/down.png": [
+  157,
+  246
+ ],
+ "characters/npc_05_blue_boy/hurt.png": [
+  215,
+  199
+ ],
+ "characters/npc_05_blue_boy/left.png": [
+  174,
+  252
+ ],
+ "characters/npc_05_blue_boy/pick_up.png": [
+  157,
+  239
+ ],
+ "characters/npc_05_blue_boy/put_down.png": [
+  210,
+  233
+ ],
+ "characters/npc_05_blue_boy/right.png": [
+  170,
+  251
+ ],
+ "characters/npc_05_blue_boy/sit.png": [
+  161,
+  253
+ ],
+ "characters/npc_05_blue_boy/sleep.png": [
+  249,
+  254
+ ],
+ "characters/npc_05_blue_boy/up.png": [
+  157,
+  246
+ ],
+ "characters/npc_06_farmer_girl/die.png": [
+  297,
+  142
+ ],
+ "characters/npc_06_farmer_girl/down.png": [
+  203,
+  253
+ ],
+ "characters/npc_06_farmer_girl/hurt.png": [
+  209,
+  197
+ ],
+ "characters/npc_06_farmer_girl/left.png": [
+  175,
+  255
+ ],
+ "characters/npc_06_farmer_girl/pick_up.png": [
+  203,
+  248
+ ],
+ "characters/npc_06_farmer_girl/put_down.png": [
+  211,
+  228
+ ],
+ "characters/npc_06_farmer_girl/right.png": [
+  183,
+  260
+ ],
+ "characters/npc_06_farmer_girl/sit.png": [
+  193,
+  254
+ ],
+ "characters/npc_06_farmer_girl/sleep.png": [
+  256,
+  248
+ ],
+ "characters/npc_06_farmer_girl/up.png": [
+  184,
+  255
+ ],
+ "characters/npc_07_old_man/die.png": [
+  292,
+  143
+ ],
+ "characters/npc_07_old_man/down.png": [
+  163,
+  246
+ ],
+ "characters/npc_07_old_man/hurt.png": [
+  209,
+  196
+ ],
+ "characters/npc_07_old_man/left.png": [
+  166,
+  251
+ ],
+ "characters/npc_07_old_man/pick_up.png": [
+  164,
+  249
+ ],
+ "characters/npc_07_old_man/put_down.png": [
+  207,
+  234
+ ],
+ "characters/npc_07_old_man/right.png": [
+  167,
+  253
+ ],
+ "characters/npc_07_old_man/sit.png": [
+  179,
+  257
+ ],
+ "characters/npc_07_old_man/sleep.png": [
+  253,
+  243
+ ],
+ "characters/npc_07_old_man/up.png": [
+  157,
+  251
+ ],
+ "characters/npc_08_maid/die.png": [
+  305,
+  150
+ ],
+ "characters/npc_08_maid/down.png": [
+  186,
+  250
+ ],
+ "characters/npc_08_maid/hurt.png": [
+  215,
+  199
+ ],
+ "characters/npc_08_maid/left.png": [
+  177,
+  253
+ ],
+ "characters/npc_08_maid/pick_up.png": [
+  189,
+  246
+ ],
+ "characters/npc_08_maid/put_down.png": [
+  222,
+  246
+ ],
+ "characters/npc_08_maid/right.png": [
+  174,
+  251
+ ],
+ "characters/npc_08_maid/sit.png": [
+  182,
+  254
+ ],
+ "characters/npc_08_maid/sleep.png": [
+  251,
+  243
+ ],
+ "characters/npc_08_maid/up.png": [
+  182,
+  250
+ ],
+ "characters/npc_09_young_girl/die.png": [
+  316,
+  149
+ ],
+ "characters/npc_09_young_girl/down.png": [
+  185,
+  253
+ ],
+ "characters/npc_09_young_girl/hurt.png": [
+  225,
+  197
+ ],
+ "characters/npc_09_young_girl/left.png": [
+  189,
+  251
+ ],
+ "characters/npc_09_young_girl/pick_up.png": [
+  183,
+  245
+ ],
+ "characters/npc_09_young_girl/put_down.png": [
+  231,
+  240
+ ],
+ "characters/npc_09_young_girl/right.png": [
+  192,
+  252
+ ],
+ "characters/npc_09_young_girl/sit.png": [
+  183,
+  251
+ ],
+ "characters/npc_09_young_girl/sleep.png": [
+  253,
+  245
+ ],
+ "characters/npc_09_young_girl/up.png": [
+  170,
+  250
+ ],
+ "characters/npc_10_cat_boy/die.png": [
+  312,
+  190
+ ],
+ "characters/npc_10_cat_boy/down.png": [
+  176,
+  252
+ ],
+ "characters/npc_10_cat_boy/hurt.png": [
+  239,
+  206
+ ],
+ "characters/npc_10_cat_boy/left.png": [
+  181,
+  258
+ ],
+ "characters/npc_10_cat_boy/pick_up.png": [
+  180,
+  247
+ ],
+ "characters/npc_10_cat_boy/put_down.png": [
+  219,
+  236
+ ],
+ "characters/npc_10_cat_boy/right.png": [
+  175,
+  257
+ ],
+ "characters/npc_10_cat_boy/sit.png": [
+  186,
+  233
+ ],
+ "characters/npc_10_cat_boy/sleep.png": [
+  265,
+  257
+ ],
+ "characters/npc_10_cat_boy/up.png": [
+  170,
+  252
+ ],
+ "characters/npc_12_adventurer/die.png": [
+  268,
+  146
+ ],
+ "characters/npc_12_adventurer/down.png": [
+  169,
+  214
+ ],
+ "characters/npc_12_adventurer/hurt.png": [
+  200,
+  186
+ ],
+ "characters/npc_12_adventurer/left.png": [
+  170,
+  216
+ ],
+ "characters/npc_12_adventurer/pick_up.png": [
+  171,
+  207
+ ],
+ "characters/npc_12_adventurer/put_down.png": [
+  188,
+  208
+ ],
+ "characters/npc_12_adventurer/right.png": [
+  170,
+  211
+ ],
+ "characters/npc_12_adventurer/sit.png": [
+  179,
+  208
+ ],
+ "characters/npc_12_adventurer/sleep.png": [
+  198,
+  209
+ ],
+ "characters/npc_12_adventurer/up.png": [
+  181,
+  211
+ ],
+ "characters/npc_13_scholar/die.png": [
+  263,
+  135
+ ],
+ "characters/npc_13_scholar/down.png": [
+  145,
+  217
+ ],
+ "characters/npc_13_scholar/hurt.png": [
+  194,
+  185
+ ],
+ "characters/npc_13_scholar/left.png": [
+  151,
+  218
+ ],
+ "characters/npc_13_scholar/pick_up.png": [
+  142,
+  204
+ ],
+ "characters/npc_13_scholar/put_down.png": [
+  163,
+  195
+ ],
+ "characters/npc_13_scholar/right.png": [
+  152,
+  217
+ ],
+ "characters/npc_13_scholar/sit.png": [
+  146,
+  208
+ ],
+ "characters/npc_13_scholar/sleep.png": [
+  197,
+  208
+ ],
+ "characters/npc_13_scholar/up.png": [
+  138,
+  217
+ ],
+ "chicken.png": [
+  62,
+  66
+ ],
+ "corn.png": [
+  30,
+  44
+ ],
+ "cow.png": [
+  89,
+  75
+ ],
+ "crate.png": [
+  60,
+  62
+ ],
+ "crops/cabbage/stage_00.png": [
+  26,
+  30
+ ],
+ "crops/cabbage/stage_01.png": [
+  40,
+  40
+ ],
+ "crops/cabbage/stage_02.png": [
+  69,
+  66
+ ],
+ "crops/cabbage/stage_03.png": [
+  77,
+  73
+ ],
+ "crops/cabbage/stage_04.png": [
+  89,
+  83
+ ],
+ "crops/cabbage/stage_05.png": [
+  93,
+  86
+ ],
+ "crops/cabbage/stage_06.png": [
+  100,
+  92
+ ],
+ "crops/cabbage/stage_07.png": [
+  100,
+  96
+ ],
+ "crops/cabbage/stage_08.png": [
+  106,
+  98
+ ],
+ "crops/cabbage/stage_09.png": [
+  115,
+  100
+ ],
+ "crops/carrot/stage_00.png": [
+  26,
+  30
+ ],
+ "crops/carrot/stage_01.png": [
+  40,
+  42
+ ],
+ "crops/carrot/stage_02.png": [
+  61,
+  78
+ ],
+ "crops/carrot/stage_03.png": [
+  67,
+  89
+ ],
+ "crops/carrot/stage_04.png": [
+  76,
+  97
+ ],
+ "crops/carrot/stage_05.png": [
+  78,
+  101
+ ],
+ "crops/carrot/stage_06.png": [
+  82,
+  101
+ ],
+ "crops/carrot/stage_07.png": [
+  81,
+  101
+ ],
+ "crops/carrot/stage_08.png": [
+  81,
+  101
+ ],
+ "crops/carrot/stage_09.png": [
+  83,
+  101
+ ],
+ "crops/corn/stage_00.png": [
+  29,
+  31
+ ],
+ "crops/corn/stage_01.png": [
+  42,
+  45
+ ],
+ "crops/corn/stage_02.png": [
+  57,
+  72
+ ],
+ "crops/corn/stage_03.png": [
+  63,
+  96
+ ],
+ "crops/corn/stage_04.png": [
+  71,
+  96
+ ],
+ "crops/corn/stage_05.png": [
+  73,
+  100
+ ],
+ "crops/corn/stage_06.png": [
+  76,
+  100
+ ],
+ "crops/corn/stage_07.png": [
+  74,
+  100
+ ],
+ "crops/corn/stage_08.png": [
+  75,
+  100
+ ],
+ "crops/corn/stage_09.png": [
+  80,
+  100
+ ],
+ "crops/pumpkin/stage_00.png": [
+  25,
+  30
+ ],
+ "crops/pumpkin/stage_01.png": [
+  41,
+  37
+ ],
+ "crops/pumpkin/stage_02.png": [
+  59,
+  62
+ ],
+ "crops/pumpkin/stage_03.png": [
+  71,
+  68
+ ],
+ "crops/pumpkin/stage_04.png": [
+  83,
+  73
+ ],
+ "crops/pumpkin/stage_05.png": [
+  87,
+  75
+ ],
+ "crops/pumpkin/stage_06.png": [
+  99,
+  75
+ ],
+ "crops/pumpkin/stage_07.png": [
+  115,
+  79
+ ],
+ "crops/pumpkin/stage_08.png": [
+  121,
+  86
+ ],
+ "crops/pumpkin/stage_09.png": [
+  128,
+  91
+ ],
+ "crops/soil/dirt.png": [
+  142,
+  112
+ ],
+ "crops/soil/dry_cracked.png": [
+  145,
+  112
+ ],
+ "crops/soil/tilled_soil.png": [
+  144,
+  112
+ ],
+ "crops/soil/watered_soil.png": [
+  146,
+  112
+ ],
+ "crops/strawberry/stage_00.png": [
+  25,
+  28
+ ],
+ "crops/strawberry/stage_01.png": [
+  42,
+  36
+ ],
+ "crops/strawberry/stage_02.png": [
+  71,
+  63
+ ],
+ "crops/strawberry/stage_03.png": [
+  81,
+  79
+ ],
+ "crops/strawberry/stage_04.png": [
+  90,
+  87
+ ],
+ "crops/strawberry/stage_05.png": [
+  90,
+  84
+ ],
+ "crops/strawberry/stage_06.png": [
+  98,
+  86
+ ],
+ "crops/strawberry/stage_07.png": [
+  101,
+  87
+ ],
+ "crops/strawberry/stage_08.png": [
+  103,
+  88
+ ],
+ "crops/strawberry/stage_09.png": [
+  106,
+  87
+ ],
+ "crops/tomato/stage_00.png": [
+  25,
+  29
+ ],
+ "crops/tomato/stage_01.png": [
+  42,
+  37
+ ],
+ "crops/tomato/stage_02.png": [
+  68,
+  81
+ ],
+ "crops/tomato/stage_03.png": [
+  78,
+  85
+ ],
+ "crops/tomato/stage_04.png": [
+  89,
+  89
+ ],
+ "crops/tomato/stage_05.png": [
+  88,
+  89
+ ],
+ "crops/tomato/stage_06.png": [
+  93,
+  91
+ ],
+ "crops/tomato/stage_07.png": [
+  95,
+  93
+ ],
+ "crops/tomato/stage_08.png": [
+  98,
+  97
+ ],
+ "crops/tomato/stage_09.png": [
+  103,
+  97
+ ],
+ "crops/wheat/stage_00.png": [
+  25,
+  30
+ ],
+ "crops/wheat/stage_01.png": [
+  22,
+  45
+ ],
+ "crops/wheat/stage_02.png": [
+  53,
+  71
+ ],
+ "crops/wheat/stage_03.png": [
+  54,
+  87
+ ],
+ "crops/wheat/stage_04.png": [
+  56,
+  93
+ ],
+ "crops/wheat/stage_05.png": [
+  66,
+  93
+ ],
+ "crops/wheat/stage_06.png": [
+  70,
+  94
+ ],
+ "crops/wheat/stage_07.png": [
+  78,
+  94
+ ],
+ "crops/wheat/stage_08.png": [
+  79,
+  94
+ ],
+ "crops/wheat/stage_09.png": [
+  84,
+  95
+ ],
+ "door_closed.png": [
+  92,
+  87
+ ],
+ "door_closing.png": [
+  92,
+  87
+ ],
+ "door_open.png": [
+  93,
+  88
+ ],
+ "door_opening.png": [
+  93,
+  87
+ ],
+ "fence_gate.png": [
+  38,
+  32
+ ],
+ "fence_picket.png": [
+  73,
+  40
+ ],
+ "fence_post_1.png": [
+  17,
+  42
+ ],
+ "fence_post_2.png": [
+  18,
+  42
+ ],
+ "fence_post_3.png": [
+  19,
+  43
+ ],
+ "fence_rail_1.png": [
+  58,
+  42
+ ],
+ "fence_rail_2.png": [
+  58,
+  41
+ ],
+ "fishpond.png": [
+  149,
+  125
+ ],
+ "floor_wood.png": [
+  97,
+  93
+ ],
+ "flower_blue.png": [
+  31,
+  40
+ ],
+ "flower_green.png": [
+  32,
+  42
+ ],
+ "flower_pink.png": [
+  31,
+  35
+ ],
+ "flower_white.png": [
+  30,
+  35
+ ],
+ "flower_yellow_1.png": [
+  31,
+  35
+ ],
+ "flower_yellow_2.png": [
+  30,
+  40
+ ],
+ "furn_bed.png": [
+  86,
+  102
+ ],
+ "furn_bookshelf.png": [
+  106,
+  94
+ ],
+ "furn_counter.png": [
+  131,
+  88
+ ],
+ "furn_fireplace.png": [
+  108,
+  103
+ ],
+ "furn_plant.png": [
+  81,
+  99
+ ],
+ "furn_rug.png": [
+  119,
+  74
+ ],
+ "furn_table.png": [
+  107,
+  96
+ ],
+ "furn_window.png": [
+  93,
+  97
+ ],
+ "greenhouse.png": [
+  155,
+  177
+ ],
+ "house_barn.png": [
+  156,
+  187
+ ],
+ "house_blue.png": [
+  134,
+  170
+ ],
+ "house_coop.png": [
+  111,
+  158
+ ],
+ "house_farm.png": [
+  164,
+  187
+ ],
+ "house_manor.png": [
+  181,
+  186
+ ],
+ "house_shed.png": [
+  106,
+  130
+ ],
+ "house_town.png": [
+  128,
+  181
+ ],
+ "icon_arrow.png": [
+  37,
+  34
+ ],
+ "icon_clock.png": [
+  35,
+  34
+ ],
+ "icon_coin.png": [
+  31,
+  32
+ ],
+ "icon_heart.png": [
+  36,
+  33
+ ],
+ "icon_house.png": [
+  35,
+  38
+ ],
+ "icon_key.png": [
+  35,
+  36
+ ],
+ "icon_parcel.png": [
+  34,
+  36
+ ],
+ "icon_warning.png": [
+  39,
+  38
+ ],
+ "jojamart.png": [
+  164,
+  149
+ ],
+ "lamp_post.png": [
+  27,
+  110
+ ],
+ "log.png": [
+  126,
+  71
+ ],
+ "mailbox.png": [
+  39,
+  77
+ ],
+ "npc_black.png": [
+  48,
+  87
+ ],
+ "npc_blonde.png": [
+  56,
+  85
+ ],
+ "npc_brown.png": [
+  49,
+  86
+ ],
+ "npc_green.png": [
+  43,
+  87
+ ],
+ "npc_old.png": [
+  45,
+  84
+ ],
+ "npc_purple.png": [
+  59,
+  85
+ ],
+ "npc_red.png": [
+  51,
+  86
+ ],
+ "pig.png": [
+  71,
+  67
+ ],
+ "pumpkin.png": [
+  42,
+  41
+ ],
+ "red_mat.png": [
+  100,
+  53
+ ],
+ "robot/carry.png": [
+  125,
+  165
+ ],
+ "robot/hit_carry.png": [
+  123,
+  159
+ ],
+ "robot/hit_down.png": [
+  111,
+  158
+ ],
+ "robot/hit_left.png": [
+  112,
+  161
+ ],
+ "robot/hit_right.png": [
+  112,
+  161
+ ],
+ "robot/hit_up.png": [
+  120,
+  161
+ ],
+ "robot/idle_down.png": [
+  105,
+  161
+ ],
+ "robot/idle_left.png": [
+  116,
+  161
+ ],
+ "robot/idle_right.png": [
+  116,
+  161
+ ],
+ "robot/idle_up.png": [
+  101,
+  162
+ ],
+ "robot/walk_down_0.png": [
+  97,
+  156
+ ],
+ "robot/walk_down_1.png": [
+  99,
+  162
+ ],
+ "robot/walk_down_2.png": [
+  98,
+  156
+ ],
+ "robot/walk_down_3.png": [
+  100,
+  166
+ ],
+ "robot/walk_down_4.png": [
+  98,
+  166
+ ],
+ "robot/walk_down_5.png": [
+  98,
+  156
+ ],
+ "robot/walk_left_0.png": [
+  116,
+  148
+ ],
+ "robot/walk_left_1.png": [
+  114,
+  147
+ ],
+ "robot/walk_left_2.png": [
+  115,
+  147
+ ],
+ "robot/walk_left_3.png": [
+  106,
+  150
+ ],
+ "robot/walk_left_4.png": [
+  108,
+  148
+ ],
+ "robot/walk_left_5.png": [
+  114,
+  150
+ ],
+ "robot/walk_right_0.png": [
+  116,
+  148
+ ],
+ "robot/walk_right_1.png": [
+  114,
+  147
+ ],
+ "robot/walk_right_2.png": [
+  115,
+  147
+ ],
+ "robot/walk_right_3.png": [
+  106,
+  150
+ ],
+ "robot/walk_right_4.png": [
+  108,
+  148
+ ],
+ "robot/walk_right_5.png": [
+  114,
+  150
+ ],
+ "robot/walk_up_0.png": [
+  101,
+  161
+ ],
+ "robot/walk_up_1.png": [
+  100,
+  163
+ ],
+ "robot/walk_up_2.png": [
+  100,
+  163
+ ],
+ "robot/walk_up_3.png": [
+  99,
+  160
+ ],
+ "robot/walk_up_4.png": [
+  99,
+  164
+ ],
+ "robot/walk_up_5.png": [
+  98,
+  164
+ ],
+ "robot_collision.png": [
+  59,
+  93
+ ],
+ "robot_down.png": [
+  57,
+  90
+ ],
+ "robot_left.png": [
+  53,
+  90
+ ],
+ "robot_right.png": [
+  54,
+  92
+ ],
+ "robot_up.png": [
+  56,
+  89
+ ],
+ "rock_1.png": [
+  40,
+  39
+ ],
+ "rock_2.png": [
+  44,
+  44
+ ],
+ "rock_3.png": [
+  45,
+  45
+ ],
+ "rock_4.png": [
+  44,
+  44
+ ],
+ "saloon.png": [
+  127,
+  174
+ ],
+ "scarecrow.png": [
+  67,
+  98
+ ],
+ "sheep.png": [
+  82,
+  65
+ ],
+ "shop_pierre.png": [
+  133,
+  177
+ ],
+ "signpost.png": [
+  58,
+  83
+ ],
+ "silo.png": [
+  99,
+  196
+ ],
+ "sprinkler.png": [
+  55,
+  52
+ ],
+ "strawberry.png": [
+  34,
+  40
+ ],
+ "stump.png": [
+  108,
+  78
+ ],
+ "sunflower.png": [
+  31,
+  46
+ ],
+ "terrain/cobble_1.png": [
+  314,
+  314
+ ],
+ "terrain/cobble_2.png": [
+  313,
+  313
+ ],
+ "terrain/cobble_3.png": [
+  314,
+  314
+ ],
+ "terrain/cobble_4.png": [
+  314,
+  314
+ ],
+ "terrain/cobble_5.png": [
+  315,
+  315
+ ],
+ "terrain/cobble_6.png": [
+  315,
+  315
+ ],
+ "terrain/dirt_1.png": [
+  310,
+  310
+ ],
+ "terrain/dirt_2.png": [
+  312,
+  312
+ ],
+ "terrain/dirt_3.png": [
+  312,
+  312
+ ],
+ "terrain/dirt_4.png": [
+  311,
+  311
+ ],
+ "terrain/dirt_5.png": [
+  311,
+  311
+ ],
+ "terrain/dirt_footprints.png": [
+  311,
+  311
+ ],
+ "terrain/full/cobble_1.png": [
+  384,
+  366
+ ],
+ "terrain/full/cobble_2.png": [
+  383,
+  365
+ ],
+ "terrain/full/cobble_3.png": [
+  390,
+  366
+ ],
+ "terrain/full/cobble_4.png": [
+  384,
+  366
+ ],
+ "terrain/full/cobble_5.png": [
+  383,
+  367
+ ],
+ "terrain/full/cobble_6.png": [
+  390,
+  367
+ ],
+ "terrain/full/dirt_1.png": [
+  381,
+  362
+ ],
+ "terrain/full/dirt_2.png": [
+  379,
+  364
+ ],
+ "terrain/full/dirt_3.png": [
+  383,
+  364
+ ],
+ "terrain/full/dirt_4.png": [
+  380,
+  363
+ ],
+ "terrain/full/dirt_5.png": [
+  379,
+  363
+ ],
+ "terrain/full/dirt_footprints.png": [
+  383,
+  363
+ ],
+ "terrain/full/grass_1.png": [
+  368,
+  347
+ ],
+ "terrain/full/grass_2.png": [
+  366,
+  347
+ ],
+ "terrain/full/grass_3.png": [
+  369,
+  347
+ ],
+ "terrain/full/grass_4.png": [
+  369,
+  351
+ ],
+ "terrain/full/grass_dirt_1.png": [
+  367,
+  351
+ ],
+ "terrain/full/grass_dirt_2.png": [
+  366,
+  351
+ ],
+ "terrain/full/sand_1.png": [
+  394,
+  372
+ ],
+ "terrain/full/sand_2.png": [
+  386,
+  371
+ ],
+ "terrain/full/sand_3.png": [
+  402,
+  371
+ ],
+ "terrain/full/sand_4.png": [
+  396,
+  373
+ ],
+ "terrain/full/sand_5.png": [
+  389,
+  373
+ ],
+ "terrain/full/sand_6.png": [
+  402,
+  375
+ ],
+ "terrain/full/shore_bottom.png": [
+  309,
+  290
+ ],
+ "terrain/full/shore_corner_tl.png": [
+  317,
+  307
+ ],
+ "terrain/full/shore_corner_tr.png": [
+  308,
+  308
+ ],
+ "terrain/full/shore_left.png": [
+  309,
+  289
+ ],
+ "terrain/full/shore_right.png": [
+  316,
+  290
+ ],
+ "terrain/full/shore_top.png": [
+  318,
+  289
+ ],
+ "terrain/full/water_1.png": [
+  318,
+  292
+ ],
+ "terrain/full/water_dock.png": [
+  316,
+  308
+ ],
+ "terrain/full/water_lily_1.png": [
+  311,
+  293
+ ],
+ "terrain/full/water_lily_2.png": [
+  309,
+  308
+ ],
+ "terrain/full/water_rock_1.png": [
+  309,
+  293
+ ],
+ "terrain/full/water_rock_2.png": [
+  317,
+  292
+ ],
+ "terrain/grass_1.png": [
+  295,
+  295
+ ],
+ "terrain/grass_2.png": [
+  295,
+  295
+ ],
+ "terrain/grass_3.png": [
+  295,
+  295
+ ],
+ "terrain/grass_4.png": [
+  299,
+  299
+ ],
+ "terrain/grass_dirt_1.png": [
+  299,
+  299
+ ],
+ "terrain/grass_dirt_2.png": [
+  299,
+  299
+ ],
+ "terrain/sand_1.png": [
+  320,
+  320
+ ],
+ "terrain/sand_2.png": [
+  319,
+  319
+ ],
+ "terrain/sand_3.png": [
+  319,
+  319
+ ],
+ "terrain/sand_4.png": [
+  321,
+  321
+ ],
+ "terrain/sand_5.png": [
+  321,
+  321
+ ],
+ "terrain/sand_6.png": [
+  323,
+  323
+ ],
+ "terrain/seamless/cobble_1.png": [
+  314,
+  314
+ ],
+ "terrain/seamless/cobble_2.png": [
+  313,
+  313
+ ],
+ "terrain/seamless/cobble_3.png": [
+  314,
+  314
+ ],
+ "terrain/seamless/cobble_4.png": [
+  314,
+  314
+ ],
+ "terrain/seamless/cobble_5.png": [
+  315,
+  315
+ ],
+ "terrain/seamless/cobble_6.png": [
+  315,
+  315
+ ],
+ "terrain/seamless/dirt_1.png": [
+  310,
+  310
+ ],
+ "terrain/seamless/dirt_2.png": [
+  312,
+  312
+ ],
+ "terrain/seamless/dirt_3.png": [
+  312,
+  312
+ ],
+ "terrain/seamless/dirt_4.png": [
+  311,
+  311
+ ],
+ "terrain/seamless/dirt_5.png": [
+  311,
+  311
+ ],
+ "terrain/seamless/dirt_footprints.png": [
+  311,
+  311
+ ],
+ "terrain/seamless/grass_1.png": [
+  295,
+  295
+ ],
+ "terrain/seamless/grass_2.png": [
+  295,
+  295
+ ],
+ "terrain/seamless/grass_3.png": [
+  295,
+  295
+ ],
+ "terrain/seamless/grass_4.png": [
+  299,
+  299
+ ],
+ "terrain/seamless/grass_dirt_1.png": [
+  299,
+  299
+ ],
+ "terrain/seamless/grass_dirt_2.png": [
+  299,
+  299
+ ],
+ "terrain/seamless/sand_1.png": [
+  320,
+  320
+ ],
+ "terrain/seamless/sand_2.png": [
+  319,
+  319
+ ],
+ "terrain/seamless/sand_3.png": [
+  319,
+  319
+ ],
+ "terrain/seamless/sand_4.png": [
+  321,
+  321
+ ],
+ "terrain/seamless/sand_5.png": [
+  321,
+  321
+ ],
+ "terrain/seamless/sand_6.png": [
+  323,
+  323
+ ],
+ "terrain/seamless/water_1.png": [
+  240,
+  240
+ ],
+ "terrain/seamless/water_lily_1.png": [
+  241,
+  241
+ ],
+ "terrain/seamless/water_lily_2.png": [
+  256,
+  256
+ ],
+ "terrain/seamless/water_rock_1.png": [
+  241,
+  241
+ ],
+ "terrain/seamless/water_rock_2.png": [
+  240,
+  240
+ ],
+ "terrain/shore_bottom.png": [
+  238,
+  238
+ ],
+ "terrain/shore_corner_tl.png": [
+  255,
+  255
+ ],
+ "terrain/shore_corner_tr.png": [
+  256,
+  256
+ ],
+ "terrain/shore_left.png": [
+  237,
+  237
+ ],
+ "terrain/shore_right.png": [
+  238,
+  238
+ ],
+ "terrain/shore_top.png": [
+  237,
+  237
+ ],
+ "terrain/water_1.png": [
+  240,
+  240
+ ],
+ "terrain/water_dock.png": [
+  256,
+  256
+ ],
+ "terrain/water_lily_1.png": [
+  241,
+  241
+ ],
+ "terrain/water_lily_2.png": [
+  256,
+  256
+ ],
+ "terrain/water_rock_1.png": [
+  241,
+  241
+ ],
+ "terrain/water_rock_2.png": [
+  240,
+  240
+ ],
+ "tomato.png": [
+  31,
+  36
+ ],
+ "tree_cherry.png": [
+  135,
+  172
+ ],
+ "tree_oak.png": [
+  144,
+  186
+ ],
+ "tree_pine.png": [
+  121,
+  187
+ ],
+ "ui_button_hover.png": [
+  57,
+  43
+ ],
+ "ui_button_normal.png": [
+  55,
+  43
+ ],
+ "ui_button_pressed.png": [
+  57,
+  43
+ ],
+ "ui_panel.png": [
+  145,
+  90
+ ],
+ "wallpaper.png": [
+  95,
+  92
+ ],
+ "well.png": [
+  72,
+  93
+ ],
+ "well_roof.png": [
+  55,
+  95
+ ],
+ "wheat.png": [
+  28,
+  45
+ ],
+ "windmill.png": [
+  113,
+  179
+ ]
+}

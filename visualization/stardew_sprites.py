@@ -1,6 +1,7 @@
 # visualization/stardew_sprites.py
 import math
 import random
+from pathlib import Path
 import pygame
 
 
@@ -38,6 +39,37 @@ class StardewSpriteBank:
 
     def __init__(self, scale: float):
         self.scale = scale
+        project_root = Path(__file__).resolve().parents[1]
+        self._asset_dirs = (project_root / "sprites" / "sprites", project_root / "sprites")
+        self._asset_cache: dict[str, pygame.Surface | None] = {}
+
+    def _asset(self, filename: str) -> pygame.Surface | None:
+        if filename not in self._asset_cache:
+            image = None
+            for directory in self._asset_dirs:
+                path = directory / filename
+                if path.exists():
+                    image = pygame.image.load(str(path)).convert_alpha()
+                    break
+            self._asset_cache[filename] = image
+        return self._asset_cache[filename]
+
+    def _blit_asset(self, screen: pygame.Surface, filename: str, rect: pygame.Rect) -> bool:
+        image = self._asset(filename)
+        if image is None or rect.width <= 0 or rect.height <= 0:
+            return False
+        scaled = pygame.transform.smoothscale(image, rect.size)
+        screen.blit(scaled, rect)
+        return True
+
+    def _tile_asset(self, surface: pygame.Surface, filename: str, rect: pygame.Rect) -> bool:
+        image = self._asset(filename)
+        if image is None:
+            return False
+        for y in range(rect.top, rect.bottom, image.get_height()):
+            for x in range(rect.left, rect.right, image.get_width()):
+                surface.blit(image, (x, y))
+        return True
 
     def _m2px(self, m: float) -> int:
         return int(round(m * self.scale))
@@ -65,21 +97,28 @@ class StardewSpriteBank:
         rng = random.Random(seed)
         tile_px = max(16, int(round(0.5 * self.scale)))
 
+        def terrain_rect(filename: str, x: float, y: float, w: float, h: float) -> None:
+            rect = pygame.Rect(*self._rect_m2px(x, y, w, h))
+            if not self._tile_asset(bg, filename, rect):
+                fallback = "sand_base" if filename == "sand.png" else "dirt_base"
+                pygame.draw.rect(bg, self.PALETTE[fallback], rect, border_radius=12)
+
         # Vẽ ô cỏ đa sắc độ
         for y in range(0, window_size, tile_px):
             for x in range(0, window_size, tile_px):
                 val = rng.random()
-                if val < 0.28:
-                    pygame.draw.rect(bg, self.PALETTE["grass_light"], (x, y, tile_px, tile_px))
-                elif val < 0.45:
-                    pygame.draw.rect(bg, self.PALETTE["grass_dark"], (x, y, tile_px, tile_px))
+                if val < 0.45:
+                    grass_name = f"grass_{rng.randrange(4)}.png"
+                    if not self._tile_asset(bg, grass_name, pygame.Rect(x, y, tile_px, tile_px)):
+                        color = self.PALETTE["grass_light"] if val < 0.28 else self.PALETTE["grass_dark"]
+                        pygame.draw.rect(bg, color, (x, y, tile_px, tile_px))
 
         # --- BỐ CỤC ĐỊA HÌNH ĐẶC TRƯNG CỦA 4 BẢN ĐỒ STARDEW VALLEY ---
         if topology_id == 1:
             # MAP 1 (Ảnh 1): Bãi cát vàng góc đông bắc & dọc bờ biển, ruộng cây, cầu gỗ
-            pygame.draw.rect(bg, self.PALETTE["sand_base"], self._rect_m2px(9.2, 0.25, 10.5, 5.4), border_radius=14)
-            pygame.draw.rect(bg, self.PALETTE["sand_base"], self._rect_m2px(2.4, 5.5, 3.0, 11.5), border_radius=12)
-            pygame.draw.rect(bg, self.PALETTE["sand_base"], self._rect_m2px(9.5, 13.8, 9.8, 5.8), border_radius=14)
+            terrain_rect("sand.png", 9.2, 0.25, 10.5, 5.4)
+            terrain_rect("sand.png", 2.4, 5.5, 3.0, 11.5)
+            terrain_rect("sand.png", 9.5, 13.8, 9.8, 5.8)
             # Khu đất canh tác màu vàng cam ở giữa & tây bắc
             self._draw_crop_field(bg, 4.8, 2.2, 2.0, 3.4)
             self._draw_crop_field(bg, 6.0, 7.6, 3.6, 3.4)
@@ -110,16 +149,16 @@ class StardewSpriteBank:
             pygame.draw.circle(bg, (142, 62, 54), (pcx, pcy), self._m2px(0.95), 3)
             pygame.draw.circle(bg, (212, 122, 106), (pcx, pcy), self._m2px(0.55), 2)
             # Bờ cát/đất vàng dọc hai bên dòng sông (x = 11.0 .. 14.0)
-            pygame.draw.rect(bg, self.PALETTE["dirt_base"], self._rect_m2px(10.8, 0.25, 3.3, 19.5))
+            terrain_rect("dirt.png", 10.8, 0.25, 3.3, 19.5)
             # 2 Cây cầu đá bắc qua sông tại y = 4.05..5.90 và y = 16.1..17.9
             self._draw_cobblestone_road(bg, 11.2, 4.15, 2.5, 1.65)
             self._draw_cobblestone_road(bg, 11.2, 16.15, 2.5, 1.65)
 
         elif topology_id == 4:
             # MAP 4 (Ảnh 4): Nông trại Four Corners, đường sỏi chia 4 góc, ruộng cây & bờ sông tây
-            pygame.draw.rect(bg, self.PALETTE["sand_base"], self._rect_m2px(0.25, 1.5, 4.2, 7.2), border_radius=12)
-            pygame.draw.rect(bg, self.PALETTE["dirt_base"], self._rect_m2px(4.5, 7.6, 14.8, 1.4), border_radius=6)
-            pygame.draw.rect(bg, self.PALETTE["dirt_base"], self._rect_m2px(9.2, 2.0, 1.4, 16.8), border_radius=6)
+            terrain_rect("sand.png", 0.25, 1.5, 4.2, 7.2)
+            terrain_rect("dirt.png", 4.5, 7.6, 14.8, 1.4)
+            terrain_rect("dirt.png", 9.2, 2.0, 1.4, 16.8)
             self._draw_crop_field(bg, 11.2, 7.8, 3.6, 4.2, with_sprinklers=True)
             self._draw_crop_field(bg, 3.2, 15.2, 8.8, 3.4, with_sprinklers=True)
 
@@ -147,6 +186,8 @@ class StardewSpriteBank:
 
     def _draw_cobblestone_road(self, surf: pygame.Surface, x: float, y: float, w: float, h: float):
         rx, ry, rw, rh = self._rect_m2px(x, y, w, h)
+        if self._tile_asset(surf, "cobble.png", pygame.Rect(rx, ry, rw, rh)):
+            return
         pygame.draw.rect(surf, self.PALETTE["stone_dark"], (rx - 2, ry - 2, rw + 4, rh + 4), border_radius=5)
         pygame.draw.rect(surf, self.PALETTE["stone_road"], (rx, ry, rw, rh), border_radius=4)
         step = max(10, int(0.45 * self.scale))
@@ -158,6 +199,8 @@ class StardewSpriteBank:
         self, surf: pygame.Surface, x: float, y: float, w: float, h: float, with_sprinklers: bool = False
     ):
         rx, ry, rw, rh = self._rect_m2px(x, y, w, h)
+        if self._tile_asset(surf, "crop.png", pygame.Rect(rx, ry, rw, rh)):
+            return
         pygame.draw.rect(surf, self.PALETTE["crop_soil"], (rx, ry, rw, rh), border_radius=6)
         pygame.draw.rect(surf, (104, 62, 32), (rx, ry, rw, rh), 2, border_radius=6)
         step = max(10, int(0.42 * self.scale))
@@ -170,6 +213,8 @@ class StardewSpriteBank:
 
     def _draw_wooden_bridge(self, surf: pygame.Surface, x: float, y: float, w: float, h: float):
         rx, ry, rw, rh = self._rect_m2px(x, y, w, h)
+        if self._blit_asset(surf, "bridge_wood.png", pygame.Rect(rx, ry, rw, rh)):
+            return
         pygame.draw.rect(surf, self.PALETTE["wood_dark"], (rx, ry, rw, rh), border_radius=3)
         pygame.draw.rect(surf, self.PALETTE["wood_light"], (rx + 2, ry + 2, rw - 4, rh - 4), border_radius=2)
 
@@ -241,6 +286,25 @@ class StardewSpriteBank:
     def draw_tree_sprite(
         self, screen: pygame.Surface, cx: int, cy: int, radius_px: int, obj_id: int = 1, name: str = "tree"
     ):
+        if name.startswith("silo"):
+            asset_name = "silo.png"
+        elif name.startswith("furniture_plant"):
+            asset_name = "furn_plant.png"
+        elif "cherry" in name:
+            asset_name = "tree_cherry.png"
+        elif "pine" in name or (not name.startswith("tree") and obj_id % 3 == 0):
+            asset_name = "tree_pine.png"
+        else:
+            asset_name = "tree_oak.png"
+
+        image = self._asset(asset_name)
+        if image is not None:
+            aspect = image.get_width() / image.get_height()
+            height = max(16, int(radius_px * (3.2 if asset_name == "silo.png" else 2.8)))
+            width = max(16, int(height * aspect))
+            self._blit_asset(screen, asset_name, pygame.Rect(cx - width // 2, cy - height + radius_px, width, height))
+            return
+
         # Nếu là Tháp Ủ Cỏ Đỏ (Silo) trong Map 2 & Map 4
         if name.startswith("silo"):
             w = int(radius_px * 2.1)
@@ -302,6 +366,29 @@ class StardewSpriteBank:
     ):
         # 1. Không vẽ đè khối tường bao tối đen khi đang ở chế độ Trong Nhà (Indoor Mode)
         if name.startswith("indoor_void_"):
+            return
+
+        asset_name = None
+        lower_name = name.lower()
+        if "greenhouse" in lower_name:
+            asset_name = "greenhouse.png"
+        elif "jojamart" in lower_name:
+            asset_name = "jojamart.png"
+        elif "barn" in lower_name:
+            asset_name = "house_barn.png"
+        elif "coop" in lower_name:
+            asset_name = "house_barn.png"
+        elif "blue" in lower_name:
+            asset_name = "house_blue.png"
+        elif "manor" in lower_name:
+            asset_name = "house_manor.png"
+        elif "town" in lower_name or "saloon" in lower_name or "pierre" in lower_name:
+            asset_name = "house_town.png"
+        elif "house_" in lower_name:
+            asset_name = "house_farm.png"
+
+        if asset_name is not None and self._asset(asset_name) is not None:
+            self._blit_asset(screen, asset_name, pygame.Rect(sx, sy, sw, sh))
             return
 
         # 2. Vẽ Nội thất bên trong nhà (Bàn, Kệ sách, Lò sưởi, Giường)
@@ -451,6 +538,18 @@ class StardewSpriteBank:
         is_collision: bool = False,
         carrying_item: bool = True,
     ):
+        robot_asset = "robot_collision.png" if is_collision else "robot_down.png"
+        robot_image = self._asset(robot_asset)
+        if robot_image is not None:
+            height = max(24, int(rad_px * 3.6))
+            width = max(18, int(height * robot_image.get_width() / robot_image.get_height()))
+            self._blit_asset(
+                screen,
+                robot_asset,
+                pygame.Rect(rx - width // 2, ry - height + rad_px, width, height),
+            )
+            return
+
         bob_y = int(round(math.sin(sim_time * 12.0) * 2.0)) if speed > 0.05 else 0
         sh_w, sh_h = int(rad_px * 2.1), int(rad_px * 1.0)
         sh_surf = pygame.Surface((sh_w, sh_h), pygame.SRCALPHA)
@@ -509,6 +608,21 @@ class StardewSpriteBank:
     ):
         # Đã sửa lỗi: lấy human.id an toàn thay vì human.obj_id
         hid = getattr(human, "id", getattr(human, "obj_id", 0))
+        npc_asset = ("npc_brown.png", "npc_blonde.png", "npc_red.png", "npc_black.png")[hid % 4]
+        npc_image = self._asset(npc_asset)
+        if npc_image is not None:
+            height = max(24, int(rad_px * 3.4))
+            width = max(16, int(height * npc_image.get_width() / npc_image.get_height()))
+            self._blit_asset(
+                screen,
+                npc_asset,
+                pygame.Rect(cx - width // 2, cy - height + rad_px, width, height),
+            )
+            if debug_mode:
+                label = small_font.render(str(hid), True, (255, 255, 255))
+                screen.blit(label, (cx - label.get_width() // 2, cy - height - 2))
+            return
+
         hair_colors = [(115, 62, 36), (235, 182, 65), (185, 68, 52), (55, 58, 72)]
         hair_col = hair_colors[hid % len(hair_colors)]
 
@@ -571,6 +685,17 @@ class StardewSpriteBank:
         pygame.draw.polygon(screen, (145, 85, 20), pts, 1)
 
     def draw_agv_cart(self, screen: pygame.Surface, cx: int, cy: int, rad_px: int, theta: float):
+        asset_name = "agv_side.png" if abs(math.cos(theta)) > abs(math.sin(theta)) else "agv_front.png"
+        image = self._asset(asset_name)
+        if image is not None:
+            height = max(22, int(rad_px * 2.8))
+            width = max(18, int(height * image.get_width() / image.get_height()))
+            self._blit_asset(
+                screen,
+                asset_name,
+                pygame.Rect(cx - width // 2, cy - height + rad_px, width, height),
+            )
+            return
         w, h = max(16, int(rad_px * 1.7)), max(14, int(rad_px * 1.4))
         pygame.draw.rect(screen, (75, 65, 60), (cx - w // 2, cy - h // 2, w, h), border_radius=4)
         pygame.draw.rect(screen, (168, 112, 62), (cx - w // 2 + 2, cy - h // 2 + 2, w - 4, h - 4), border_radius=3)

@@ -1,0 +1,152 @@
+{
+  "slot_id": 1,
+  "saved_at": "24/10/2026 20:18",
+  "save_time": "Ngày 1 (Mùa Thu) - 24/10/2026 20:18",
+  "day": 1,
+  "season_idx": 2,
+  "season_name": "Mùa Thu",
+  "festival_active": true,
+  "gold": 110,
+  "score": 40,
+  "hearts": 3,
+  "completed_quests_count": 0,
+  "total_knockdowns": 0,
+  "quest_idx": 0,
+  "current_map_id": 3,
+  "in_interior": false,
+  "robot_x": 72.0,
+  "robot_y": 400.0,
+  "robot_theta": 0.0,
+  "inventory": [
+    "pumpkin",
+    "mushroom"
+  ],
+  "max_inventory": 4,
+  "slot_meta": [
+    {
+      "item_key": "pumpkin",
+      "quality": 0,
+      "quantity": 1
+    },
+    {
+      "item_key": "mushroom",
+      "quality": 0,
+      "quantity": 1
+    }
+  ],
+  "workshop_bought": {
+    "cargo_lv2": false,
+    "fast_harvest": false,
+    "social_radar": false
+  },
+  "friendship": {
+    "Bà Evelyn": 320
+  },
+  "persistent_harvest_state": {
+    "town_straw": {
+      "has_produce": true,
+      "regrow_timer": 0.0,
+      "regrow_total": 16.0,
+      "growth_stage": 9,
+      "map_id": 1
+    },
+    "town_cab": {
+      "has_produce": true,
+      "regrow_timer": 0.0,
+      "regrow_total": 16.0,
+      "growth_stage": 9,
+      "map_id": 1
+    },
+    "crop_straw_1": {
+      "has_produce": false,
+      "regrow_timer": 12.0,
+      "regrow_total": 16.0,
+      "growth_stage": 3,
+      "map_id": 2
+    },
+    "crop_pump_1": {
+      "has_produce": true,
+      "regrow_timer": 0.0,
+      "regrow_total": 16.0,
+      "growth_stage": 9,
+      "map_id": 2
+    },
+    "crop_corn_1": {
+      "has_produce": true,
+      "regrow_timer": 0.0,
+      "regrow_total": 16.0,
+      "growth_stage": 9,
+      "map_id": 2
+    },
+    "crop_tom_1": {
+      "has_produce": true,
+      "regrow_timer": 0.0,
+      "regrow_total": 16.0,
+      "growth_stage": 9,
+      "map_id": 2
+    },
+    "crop_carrot_1": {
+      "has_produce": true,
+      "regrow_timer": 0.0,
+      "regrow_total": 16.0,
+      "growth_stage": 9,
+      "map_id": 2
+    },
+    "crop_wheat_1": {
+      "has_produce": true,
+      "regrow_timer": 0.0,
+      "regrow_total": 16.0,
+      "growth_stage": 9,
+      "map_id": 2
+    },
+    "tree_apple_1": {
+      "has_produce": true,
+      "regrow_timer": 0.0,
+      "regrow_total": 16.0,
+      "growth_stage": 9,
+      "map_id": 2
+    },
+    "tree_orange_1": {
+      "has_produce": true,
+      "regrow_timer": 0.0,
+      "regrow_total": 16.0,
+      "growth_stage": 9,
+      "map_id": 2
+    },
+    "tree_peach_1": {
+      "has_produce": true,
+      "regrow_timer": 0.0,
+      "regrow_total": 16.0,
+      "growth_stage": 9,
+      "map_id": 2
+    },
+    "tree_apple_2": {
+      "has_produce": true,
+      "regrow_timer": 0.0,
+      "regrow_total": 16.0,
+      "growth_stage": 9,
+      "map_id": 2
+    },
+    "tree_peach_2": {
+      "has_produce": true,
+      "regrow_timer": 0.0,
+      "regrow_total": 16.0,
+      "growth_stage": 9,
+      "map_id": 2
+    },
+    "lake_cab_1": {
+      "has_produce": true,
+      "regrow_timer": 0.0,
+      "regrow_total": 16.0,
+      "growth_stage": 9,
+      "map_id": 3
+    },
+    "island_straw_1": {
+      "has_produce": true,
+      "regrow_timer": 0.0,
+      "regrow_total": 16.0,
+      "growth_stage": 9,
+      "map_id": 3
+    }
+  }
+}

@@ -1,0 +1,814 @@
+{
+  "Bà Evelyn": {
+    "role": "Người giao Nhiệm vụ Hái Quả",
+    "age_group": "elder",
+    "safety_radius_m": 1.65,
+    "personality": "Hiền hậu, yêu hoa cỏ và luôn chăm sóc mọi người bằng bánh quy mới nướng.",
+    "home_id": "house_evelyn",
+    "loved_items": [
+      "golden_flower",
+      "strawberry",
+      "peach"
+    ],
+    "liked_items": [
+      "apple",
+      "bread",
+      "carrot"
+    ],
+    "hated_items": [
+      "fish",
+      "parcel"
+    ],
+    "perk_3_hearts": "Bà Evelyn tặng bánh quy hạt dẻ thơm nức và chỉ dẫn cách hái quả đạt Sao Vàng!",
+    "perk_5_hearts": "Mở khóa Đơn Đặt Hàng Đặc Biệt: Hương Sắc Mùa Xuân thưởng x1.5 Vàng & Điểm.",
+    "rumor": "Bà nghe nói vào mùa thu dưới tán sồi già thường mọc nấm rừng thơm ngát hương!",
+    "dialogues": {
+      "low": "Chào chú robot nhỏ bé! Hãy chú ý đi lại nhẹ nhàng kẻo làm kinh động lũ chim sẻ nhé.",
+      "mid": "Cháu thật ngoan và ân cần! Cảm ơn cháu đã luôn chăm sóc khu vườn hoa của thị trấn.",
+      "high": "Cháu giống như một đứa cháu ruột nhỏ tuổi đáng yêu vậy! Bà luôn để dành cho cháu những chiếc bánh nướng giòn rụm nhất.",
+      "morning": "Buổi sáng không khí trong lành thật tuyệt! Nắng sớm làm những đóa hoa bung nở.",
+      "afternoon": "Trưa nay nắng ấm quá, đừng làm việc quá sức nhé FarmBot nhỏ.",
+      "evening": "Trời trở lạnh rồi đấy, cháu đã hoàn thành các chuyến giao hàng hôm nay chưa?",
+      "rain": "Cơn mưa rào thật tốt cho luống dâu tây và hoa cúc ngoài vườn!"
+    },
+    "sprite": "npc_red",
+    "movement": "stationary"
+  },
+  "Ông George": {
+    "role": "Người giao Nhiệm vụ Câu Cá",
+    "age_group": "elder",
+    "safety_radius_m": 1.65,
+    "personality": "Khó tính bên ngoài nhưng bên trong rất quan tâm đến mọi người xung quanh.",
+    "home_id": "house_george",
+    "loved_items": [
+      "mushroom",
+      "bread",
+      "pumpkin"
+    ],
+    "liked_items": [
+      "apple",
+      "corn",
+      "fish"
+    ],
+    "hated_items": [
+      "wild_berry",
+      "golden_flower"
+    ],
+    "perk_3_hearts": "Ông George chia sẻ kinh nghiệm giữ thăng bằng thanh câu cá Stardew dễ hơn 15%!",
+    "perk_5_hearts": "Mở khóa Đơn Đặt Hàng Đặc Biệt thưởng x1.5 Vàng & Điểm.",
+    "rumor": "Cây cầu gỗ ra Đảo Nam là nơi cá chép hoa thường bơi về kiếm ăn lúc chiều tà.",
+    "dialogues": {
+      "low": "Hừm... Đừng có lượn sát xe lăn của ta quá đấy chú máy móc! Hãy giữ khoảng cách an toàn.",
+      "mid": "Ta thấy cháu làm việc cũng khá cẩn thận đấy. Ít nhất là không chạy lung tung như mấy đứa trẻ con.",
+      "high": "Cảm ơn cháu đã lắng nghe ông già khó tính này nói chuyện. Thị trấn này may mắn có một chú robot tốt bụng như cháu.",
+      "morning": "Sương sớm làm khớp gối của ta hơi nhức mỏi... Nhưng câu cá lúc sáng sớm là tuyệt nhất.",
+      "afternoon": "Chiều nay yên tĩnh thật đấy. Tivi chả có chương trình gì hay ho cả.",
+      "evening": "Mặt trời lặn rồi, ta phải chuẩn bị ăn tối đây.",
+      "rain": "Trời mưa thì ở yên trong nhà là sướng nhất, nhưng lũ cá thì lại cắn câu mạnh đấy!"
+    },
+    "sprite": "npc_old",
+    "movement": "stationary"
+  },
+  "Chủ tiệm Pierre": {
+    "role": "Chủ Tạp Hóa Thị Trấn",
+    "age_group": "adult",
+    "safety_radius_m": 1.25,
+    "personality": "Tháo vát, yêu thích kinh doanh và các loại hạt giống chất lượng cao.",
+    "home_id": "house_pierre",
+    "loved_items": [
+      "corn",
+      "carrot",
+      "parcel"
+    ],
+    "liked_items": [
+      "apple",
+      "tomato",
+      "wheat"
+    ],
+    "hated_items": [
+      "fish",
+      "wild_berry"
+    ],
+    "perk_3_hearts": "Tiệm Pierre mở rộng các mặt hàng độc quyền và tăng 10% giá thu mua nông sản.",
+    "perk_5_hearts": "Mở khóa Đơn Đặt Hàng Đặc Biệt Chuyển Phát Hỏa Tốc thưởng x1.5 Vàng & Điểm.",
+    "rumor": "Thùng giao hàng cạnh nhà chính nông trại do chính xưởng mộc Robin chế tác rất bền.",
+    "dialogues": {
+      "low": "Chào FarmBot! Cần mua hạt giống hay chuyển phát đơn hàng nào thì cứ ghé tiệm tạp hóa nhé.",
+      "mid": "Nông sản cháu chuyển tới hôm qua bán rất chạy đấy! Cảm ơn sự hỗ trợ đắc lực của cháu.",
+      "high": "Cháu là đối tác kinh doanh đáng tin cậy nhất của tiệm Pierre! Tôi luôn dành giá ưu đãi tốt nhất cho cháu.",
+      "morning": "Tiệm vừa mở cửa, hôm nay chắc chắn sẽ là một ngày buôn bán tấp nập!",
+      "afternoon": "Giờ trưa khách đông quá, may mà có dịch vụ giao nhận hỏa tốc của cháu hỗ trợ.",
+      "evening": "Đã đến giờ kiểm kê sổ sách doanh thu trong ngày rồi.",
+      "rain": "Trời mưa khách ít đi chợ hơn, chuyển phát hàng hóa tận nhà chính là vị cứu tinh!"
+    },
+    "sprite": "npc_green",
+    "movement": "stationary"
+  },
+  "Bé Jas": {
+    "role": "Học sinh đi dạo",
+    "age_group": "child",
+    "safety_radius_m": 1.65,
+    "personality": "Nhút nhát, thích chơi nhảy dây và rất yêu các loài thú nuôi mềm mại.",
+    "home_id": "farm_house",
+    "loved_items": [
+      "strawberry",
+      "peach",
+      "wild_berry"
+    ],
+    "liked_items": [
+      "apple",
+      "golden_flower",
+      "bread"
+    ],
+    "hated_items": [
+      "fish",
+      "mushroom"
+    ],
+    "perk_3_hearts": "Bé Jas chia sẻ vị trí những bụi quả mọng dại chín sớm ven bờ hồ.",
+    "perk_5_hearts": "Mở khóa Đơn Đặt Hàng Đặc Biệt Bí Mật Tuổi Thơ thưởng x1.5 Vàng & Điểm.",
+    "rumor": "Jas thấy đàn vịt trời hay bay về bến hồ câu cá mỗi khi thời tiết chuyển sang mưa rào!",
+    "dialogues": {
+      "low": "Dạ... chào chú Robot... Chú có mắt đèn phát sáng trông dễ thương quá ạ.",
+      "mid": "Chú FarmBot ơi, chú có biết những chú cừu bông ở trang trại của dì Marnie không?",
+      "high": "Em rất quý chú! Em đã hái tặng chú đóa hoa cúc vàng rực rỡ nhất này!",
+      "morning": "Sáng nay em được dì Marnie cho đi dạo hít thở không khí trước khi học bài.",
+      "afternoon": "Em vừa nhảy dây được 100 cái liền đó chú FarmBot!",
+      "evening": "Đến giờ em phải về nhà ăn tối với dì Marnie rồi.",
+      "rain": "Trời mưa rơi tí tách trên mái ngói nghe như tiếng hát vậy!"
+    }
+  },
+  "Anh Sam": {
+    "role": "Nhạc công qua cầu",
+    "age_group": "adult",
+    "safety_radius_m": 1.25,
+    "personality": "Trẻ trung, đam mê âm nhạc guitar và trượt ván khắp quảng trường thị trấn.",
+    "home_id": "house_sam",
+    "loved_items": [
+      "bread",
+      "strawberry",
+      "orange"
+    ],
+    "liked_items": [
+      "apple",
+      "carrot",
+      "corn"
+    ],
+    "hated_items": [
+      "cabbage",
+      "fish"
+    ],
+    "perk_3_hearts": "Sam biểu diễn điệu nhạc acoustic vui tươi giúp Robot tăng 10% tốc độ di chuyển!",
+    "perk_5_hearts": "Mở khóa Đơn Đặt Hàng Đặc Biệt Lễ Hội Âm Nhạc thưởng x1.5 Vàng & Điểm.",
+    "rumor": "Vào ngày lễ hội mùa xuân, quảng trường sẽ được trang hoàng hoa tươi lộng lẫy!",
+    "dialogues": {
+      "low": "Này FarmBot! Trông cậu lướt đi mượt phết, giống như đang lướt ván vậy!",
+      "mid": "Ban nhạc của bọn tớ đang tập bài hát mới cho lễ hội. Cậu muốn nghe thử một đoạn không?",
+      "high": "Cậu là người bạn cừ khôi nhất! Tớ sẽ sáng tác một bản độc tấu guitar dành riêng cho cậu.",
+      "morning": "Sáng sớm tập guitar là cách tốt nhất để khởi động ngày mới tràn đầy năng lượng!",
+      "afternoon": "Trời đẹp thế này mà không ra quảng trường lướt vài vòng thì phí quá.",
+      "evening": "Tối nay tớ sẽ ghé quán Saloon của bác Gus gọi một chiếc bánh pizza nóng giòn.",
+      "rain": "Mưa thế này thì ngồi trong nhà ôm đàn sáng tác nhạc là chuẩn nhất!"
+    }
+  },
+  "Cô Leah": {
+    "role": "Nghệ sĩ chăm sóc luống rau",
+    "age_group": "adult",
+    "safety_radius_m": 1.25,
+    "personality": "Yêu thiên nhiên, say mê điêu khắc gỗ và sống tự do bên bìa rừng yên bình.",
+    "home_id": "house_leah",
+    "loved_items": [
+      "golden_flower",
+      "mushroom",
+      "peach"
+    ],
+    "liked_items": [
+      "wild_berry",
+      "cabbage",
+      "apple"
+    ],
+    "hated_items": [
+      "bread",
+      "fish"
+    ],
+    "perk_3_hearts": "Leah tặng bức tượng gỗ linh vật nông trại, tăng thêm vẻ đẹp cho quảng trường.",
+    "perk_5_hearts": "Mở khóa Đơn Đặt Hàng Đặc Biệt Điêu Khắc Rừng Xanh thưởng x1.5 Vàng & Điểm.",
+    "rumor": "Rừng sồi ven sông cho loại gỗ tạc tượng đẹp nhất khi được đón ánh nắng sớm mai.",
+    "dialogues": {
+      "low": "Xin chào! Thiên nhiên quanh thị trấn này tràn đầy cảm hứng nghệ thuật, cậu có thấy vậy không?",
+      "mid": "Những đường nét kim loại thanh thoát của cậu hòa quyện rất đẹp với khung cảnh đồng quê.",
+      "high": "Cảm ơn cậu đã luôn mang đến nguồn cảm hứng tinh khôi cho các tác phẩm điêu khắc của tôi.",
+      "morning": "Ánh bình minh chiếu xuyên qua kẽ lá sồi tạo nên những vệt sáng huyền ảo.",
+      "afternoon": "Tôi vừa hoàn thành bản phác thảo bức tượng gỗ mới bên bờ suối.",
+      "evening": "Màn sương chiều buông xuống khu rừng mang một vẻ đẹp tĩnh lặng kỳ diệu.",
+      "rain": "Mùi đất ẩm sau cơn mưa rào rừng thông luôn là mùi hương tôi yêu thích nhất."
+    }
+  },
+  "Nông dân Marnie": {
+    "role": "Chủ Trang Trại Thú Nuôi",
+    "age_group": "adult",
+    "safety_radius_m": 1.25,
+    "personality": "Ấm áp, tận tâm chăm sóc đàn gia súc gia cầm và luôn hào sảng đón khách.",
+    "home_id": "farm_house",
+    "loved_items": [
+      "wheat",
+      "corn",
+      "pumpkin"
+    ],
+    "liked_items": [
+      "carrot",
+      "apple",
+      "bread"
+    ],
+    "hated_items": [
+      "fish",
+      "parcel"
+    ],
+    "perk_3_hearts": "Marnie dạy cách vỗ về thú cưng giúp đàn bò cừu luôn hạnh phúc cho sản lượng cao.",
+    "perk_5_hearts": "Mở khóa Đơn Đặt Hàng Đặc Biệt Nông Trại Vàng thưởng x1.5 Vàng & Điểm.",
+    "rumor": "Những chú bò trong chuồng rất thích tiếng còi bíp bíp nhẹ nhàng từ chú robot tốt bụng!",
+    "dialogues": {
+      "low": "Chào FarmBot thân mến! Cháu có muốn ghé chuồng thăm đàn bò sữa và lũ cừu lông mịn không?",
+      "mid": "Đàn thú nuôi của tôi thích cháu lắm đấy, chúng chả hề sợ hãi khi cháu lướt qua rào.",
+      "high": "Cháu đúng là trợ thủ tuyệt vời nhất mà trang trại này từng có! Hãy nhận lấy sự quý mến của tôi.",
+      "morning": "Đã cho đàn gia súc ăn cỏ tươi và mở cửa chuồng cho chúng ra sưởi nắng sớm rồi.",
+      "afternoon": "Buổi trưa đàn bò hay tụ tập nằm nghỉ dưới bóng râm cạnh tháp silo.",
+      "evening": "Lùa đàn cừu vào chuồng an toàn trước khi trời tối thôi nào.",
+      "rain": "Hôm nay mưa nên phải giữ lũ bò trong chuồng ấm, cho chúng ăn cỏ khô dự trữ."
+    },
+    "sprite": "npc_06_farmer_girl",
+    "movement": "patrol"
+  },
+  "Anh Alex": {
+    "role": "Vận động viên thu hoạch",
+    "age_group": "adult",
+    "safety_radius_m": 1.25,
+    "personality": "Khỏe khoắn, tự tin, đam mê thể thao và luôn hướng tới việc nâng cao thể lực.",
+    "home_id": "house_george",
+    "loved_items": [
+      "bread",
+      "orange",
+      "pumpkin"
+    ],
+    "liked_items": [
+      "apple",
+      "corn",
+      "carrot"
+    ],
+    "hated_items": [
+      "mushroom",
+      "wild_berry"
+    ],
+    "perk_3_hearts": "Alex hướng dẫn cách tối ưu tải trọng giúp Robot chở nông sản không bị rung lắc.",
+    "perk_5_hearts": "Mở khóa Đơn Đặt Hàng Đặc Biệt Tập Luyện Nông Vụ thưởng x1.5 Vàng & Điểm.",
+    "rumor": "Chạy bộ quanh bờ hồ buổi sáng mang lại nguồn sinh lực tuyệt vời nhất cho cả ngày dài!",
+    "dialogues": {
+      "low": "Yo FarmBot! Hôm nay động cơ của cậu hoạt động hết công suất chưa đấy?",
+      "mid": "Tôi vừa tập xong 200 cái hít đất! Nâng thùng nông sản giúp cơ bắp săn chắc lắm đấy nhé.",
+      "high": "Cậu bền bỉ như một vận động viên vô địch vậy! Tôi rất tôn trọng tinh thần làm việc của cậu.",
+      "morning": "Khởi động chạy bộ buổi sáng ven hồ nước cùng một quả cam mọng là hết ý!",
+      "afternoon": "Giờ tập tạ buổi trưa xong là người thấy sảng khoái hẳn ra.",
+      "evening": "Chuẩn bị nạp năng lượng bằng một bữa tối giàu protein từ bác Gus đây.",
+      "rain": "Mưa thì tập thể lực trong hiên nhà, không có lý do gì để lười biếng cả!"
+    }
+  },
+  "Ngư phủ Willy": {
+    "role": "Thợ câu lão luyện",
+    "age_group": "elder",
+    "safety_radius_m": 1.65,
+    "personality": "Dày dạn sương gió, say mê tiếng sóng vỗ và am hiểu từng loài cá trong hồ.",
+    "home_id": "house_willy",
+    "loved_items": [
+      "fish",
+      "bread",
+      "pumpkin"
+    ],
+    "liked_items": [
+      "mushroom",
+      "corn",
+      "carrot"
+    ],
+    "hated_items": [
+      "golden_flower",
+      "peach"
+    ],
+    "perk_3_hearts": "Willy tặng phao câu cá bọt biển cao cấp, giảm tỷ lệ cá giật mạnh mất mồi.",
+    "perk_5_hearts": "Mở khóa Đơn Đặt Hàng Đặc Biệt Ngư Trường Bạc thưởng x1.5 Vàng & Điểm.",
+    "rumor": "Vào những ngày trời đổ mưa rào, cá hồ nước ngọt cắn câu nhanh gấp đôi ngày thường!",
+    "dialogues": {
+      "low": "A, chú robot nhỏ! Mặt nước hôm nay gợn sóng đẹp lắm, cậu có muốn thử buông cần câu không?",
+      "mid": "Thao tác giữ thanh câu xanh bám theo con cá của cậu ngày càng điêu luyện rồi đấy!",
+      "high": "Cậu là người bạn đồng hành câu cá tuyệt vời nhất trên bến hồ này! Hãy nhận lấy kinh nghiệm của lão.",
+      "morning": "Gió sớm mang hơi thở trong lành từ lòng hồ, cá bắt đầu đi ăn mồi rồi.",
+      "afternoon": "Cầu Tàu Trung Tâm là vị trí câu cá lý tưởng nhất vào buổi chiều tà.",
+      "evening": "Thu lưới và cất cần câu thôi, hôm nay khoang thuyền đầy ắp cá tươi rồi.",
+      "rain": "Trời mưa rào chính là lúc những con cá hồ to béo nhất trồi lên tìm mồi!"
+    }
+  },
+  "Nhà thám hiểm Marlon": {
+    "role": "Canh gác Đảo Bắc",
+    "age_group": "adult",
+    "safety_radius_m": 1.25,
+    "personality": "Trầm tĩnh, kiên cường, khoác áo choàng thám hiểm và luôn bảo vệ bình yên thị trấn.",
+    "home_id": "adventurer_guild",
+    "loved_items": [
+      "mushroom",
+      "bread",
+      "parcel"
+    ],
+    "liked_items": [
+      "apple",
+      "pumpkin",
+      "fish"
+    ],
+    "hated_items": [
+      "golden_flower",
+      "strawberry"
+    ],
+    "perk_3_hearts": "Marlon chia sẻ bản đồ lối tắt bí mật vượt chướng ngại vật an toàn trên đảo rừng.",
+    "perk_5_hearts": "Mở khóa Đơn Đặt Hàng Đặc Biệt Hộ Vệ Đảo Xanh thưởng x1.5 Vàng & Điểm.",
+    "rumor": "Góc sâu phía Bắc Đảo Rừng ẩn giấu những bụi cây cho quả dại quý giá nhất.",
+    "dialogues": {
+      "low": "Đứng lại... A, là robot tuần tra thị trấn. Hãy luôn cảnh giác khi đi lại gần bìa rừng.",
+      "mid": "Cậu có cảm biến phát hiện chướng ngại vật rất chuẩn xác. Rất hữu ích cho các chuyến đi xa.",
+      "high": "Tôi coi cậu là một người đồng đội đáng tin cậy. Nếu gặp bất kỳ nguy hiểm nào, hãy báo cho tôi.",
+      "morning": "Sương mù trên đảo đang tan dần, một ngày thám hiểm mới lại bắt đầu.",
+      "afternoon": "Cây cầu bắc qua đảo cần kiểm tra định kỳ để đảm bảo an toàn cho dân làng.",
+      "evening": "Bóng đêm buông xuống, các đốm đom đóm thắp sáng các lối mòn trong rừng.",
+      "rain": "Mưa làm các bậc đá trơn trượt, hãy di chuyển cẩn trọng và bật chế độ đi chậm."
+    }
+  },
+  "Chàng mèo Leo": {
+    "role": "Cậu bé dạo bộ bờ hồ",
+    "age_group": "child",
+    "safety_radius_m": 1.65,
+    "personality": "Hồn nhiên, gắn bó với chim muông và thiên nhiên hoang dã quanh bến hồ.",
+    "home_id": "fisher_shed",
+    "loved_items": [
+      "fish",
+      "wild_berry",
+      "peach"
+    ],
+    "liked_items": [
+      "apple",
+      "golden_flower",
+      "bread"
+    ],
+    "hated_items": [
+      "cabbage",
+      "parcel"
+    ],
+    "perk_3_hearts": "Leo dạy ngôn ngữ tiếng chim hót báo hiệu thời tiết đổi mùa sắp tới.",
+    "perk_5_hearts": "Mở khóa Đơn Đặt Hàng Đặc Biệt Tiếng Gọi Rừng Xanh thưởng x1.5 Vàng & Điểm.",
+    "rumor": "Đàn chim sẻ hay tụ tập quanh ngọn đèn đá ven hồ lúc mặt trời lặn.",
+    "dialogues": {
+      "low": "Meo... Bạn người sắt biết nói chuyện! Bạn có mang theo cá nhỏ không?",
+      "mid": "Leo thích ngắm chim sẻ nhảy nhót trên cành sồi cùng bạn robot lắm!",
+      "high": "Bạn là bạn thân nhất của Leo và bầy chim rừng! Leo tặng bạn quả mọng rừng ngon nhất.",
+      "morning": "Mặt trời lên rồi, bầy chim ríu rít gọi Leo thức dậy đi dạo quanh hồ.",
+      "afternoon": "Gió thổi mát rượi qua ngọn cây, Leo đang ngồi nghe tiếng sóng vỗ rì rào.",
+      "evening": "Trời sắp tối, bầy chim bay về tổ ấm, Leo cũng về chòi ngư cụ ngủ thôi.",
+      "rain": "Nước mưa làm ướt lông chim sẻ, Leo mang vụn bánh mì cho chúng trú mưa nè."
+    }
+  },
+  "Thợ mộc Robin": {
+    "role": "Kiến trúc sư Xưởng Mộc",
+    "age_group": "adult",
+    "safety_radius_m": 1.25,
+    "personality": "Khéo léo, tràn đầy năng lượng sáng tạo, luôn muốn cải tiến xưởng gỗ và robot.",
+    "home_id": "house_robin",
+    "loved_items": [
+      "peach",
+      "bread",
+      "pumpkin"
+    ],
+    "liked_items": [
+      "apple",
+      "carrot",
+      "wheat"
+    ],
+    "hated_items": [
+      "wild_berry",
+      "fish"
+    ],
+    "perk_3_hearts": "Giảm giá 20% toàn bộ nâng cấp tại Xưởng Robin!",
+    "perk_5_hearts": "Mở khóa Đơn Đặt Hàng Đặc Biệt Kiến Trúc Cảnh Quan thưởng x1.5 Vàng & Điểm.",
+    "rumor": "Nâng cấp Radar HRI tại xưởng giúp robot phát hiện người đi bộ từ xa cực kỳ nhạy bén.",
+    "dialogues": {
+      "low": "Chào FarmBot! Bấm phím [U] bất cứ lúc nào để ghé thăm Xưởng Nâng Cấp Robot của tôi nhé!",
+      "mid": "Tôi vừa thiết kế thêm khay chứa đồ mở rộng và mô-đun cảm biến thu hoạch nhanh cho cậu đấy.",
+      "high": "Cậu là kiệt tác công nghệ mà tôi tự hào nhất! Tôi sẽ luôn hỗ trợ bảo dưỡng miễn phí cho cậu.",
+      "morning": "Tiếng cưa gỗ rộn rã lúc bình minh chính là bản nhạc hay nhất đánh thức thị trấn!",
+      "afternoon": "Bản vẽ nâng cấp khoang chứa hàng 6 ngăn của cậu đã hoàn thiện rồi này.",
+      "evening": "Dọn dẹp mạt cưa và cất dụng cụ thôi, hôm nay đã chế tác được nhiều món đồ gỗ tốt.",
+      "rain": "Trời mưa ngồi trong xưởng mộc ấm áp nghe mùi hương gỗ thông thật dễ chịu."
+    }
+  },
+  "Đầu bếp Gus": {
+    "role": "Bếp trưởng Saloon",
+    "age_group": "adult",
+    "safety_radius_m": 1.25,
+    "personality": "Niềm nở, hiếu khách, đầu bếp tài hoa biến mọi nông sản tươi thành món ăn hảo hạng.",
+    "home_id": "house_gus",
+    "loved_items": [
+      "apple",
+      "tomato",
+      "bread"
+    ],
+    "liked_items": [
+      "orange",
+      "pumpkin",
+      "carrot"
+    ],
+    "hated_items": [
+      "wild_berry",
+      "parcel"
+    ],
+    "perk_3_hearts": "Tặng nông sản chất lượng Sao Bạc/Vàng và chia sẻ công thức bánh nướng giòn rụm.",
+    "perk_5_hearts": "Mở khóa Đơn Đặt Hàng Đặc Biệt Đại Tiệc Ẩm Thực thưởng x1.5 Vàng & Điểm.",
+    "rumor": "Món bánh táo nướng của Saloon luôn bán hết veo vào những ngày chợ phiên mùa thu.",
+    "dialogues": {
+      "low": "Chào mừng đến với Saloon! Tôi luôn cần táo đỏ tươi và cà chua vườn để nấu những món ngon nhất.",
+      "mid": "Nông sản cậu giao tới luôn giữ được độ tươi giòn hoàn hảo! Khách hàng khen nức nở đấy.",
+      "high": "Cậu là linh hồn kết nối các nguyên liệu tươi ngon của thung lũng với gian bếp ấm của tôi!",
+      "morning": "Bếp lò đã đỏ lửa, bánh mì mẻ đầu tiên trong ngày đang tỏa hương thơm ngát.",
+      "afternoon": "Chuẩn bị thực đơn bữa trưa cho các nông dân đang làm việc hăng say trên cánh đồng.",
+      "evening": "Quán Saloon bắt đầu đông khách rồi, ánh đèn vàng ấm áp và tiếng cười rộn rã khắp nơi.",
+      "rain": "Trời mưa rét thế này thì một bát súp bí ngô nóng hổi là món ăn tuyệt vời nhất!"
+    }
+  },
+  "Cô Haley": {
+    "role": "Nhiếp ảnh gia Khu Dân Cư",
+    "age_group": "adult",
+    "safety_radius_m": 1.25,
+    "personality": "Thời thượng, yêu thích hoa thơm và nghệ thuật nhiếp ảnh bắt trọn khoảnh khắc nắng vàng.",
+    "home_id": "house_haley",
+    "loved_items": [
+      "strawberry",
+      "golden_flower",
+      "peach"
+    ],
+    "liked_items": [
+      "orange",
+      "bread",
+      "apple"
+    ],
+    "hated_items": [
+      "fish",
+      "mushroom"
+    ],
+    "perk_3_hearts": "Haley chụp tặng Robot bộ ảnh lưu niệm tuyệt đẹp đăng lên bản tin thị trấn.",
+    "perk_5_hearts": "Mở khóa Đơn Đặt Hàng Đặc Biệt Triển Lãm Nhiếp Ảnh thưởng x1.5 Vàng & Điểm.",
+    "rumor": "Vườn hoa trước nhà Haley nở rộ rực rỡ nhất khi được đón những giọt sương sớm.",
+    "dialogues": {
+      "low": "Ối, cẩn thận đừng làm bụi bẩn dính vào ống kính máy ảnh của tôi nhé chú robot!",
+      "mid": "Góc ánh sáng chiếu lên vỏ kim loại của cậu lúc này lên hình trông nghệ thuật lắm đấy.",
+      "high": "Cậu là người mẫu ăn ảnh nhất trong thị trấn! Tôi vừa rửa xong một bức chân dung tặng cậu nè.",
+      "morning": "Ánh sáng buổi sớm thật hoàn hảo để chụp những bức ảnh cận cảnh giọt sương trên cánh hoa.",
+      "afternoon": "Nắng vàng chiều rực rỡ thế này rất hợp cho phong cách ảnh phim cổ điển.",
+      "evening": "Về phòng tối tráng phim và chọn lọc những bức ảnh đẹp nhất chụp được hôm nay thôi.",
+      "rain": "Chụp những vệt nước mưa rơi nghiêng qua khung cửa kính mang một cảm xúc rất lãng mạn."
+    }
+  },
+  "Thị trưởng Lewis": {
+    "role": "Thị trưởng Thị trấn",
+    "age_group": "elder",
+    "safety_radius_m": 1.65,
+    "personality": "Mẫn cán, trách nhiệm, luôn quan tâm đến sự an toàn và phát triển của thị trấn Pelican.",
+    "home_id": "house_lewis",
+    "loved_items": [
+      "pumpkin",
+      "parcel",
+      "golden_flower"
+    ],
+    "liked_items": [
+      "bread",
+      "fish",
+      "apple"
+    ],
+    "hated_items": [
+      "mushroom",
+      "wild_berry"
+    ],
+    "perk_3_hearts": "Thị trưởng Lewis cấp quỹ an toàn HRI cộng thêm +50G mỗi ngày làm việc không tai nạn.",
+    "perk_5_hearts": "Mở khóa Đơn Đặt Hàng Đặc Biệt Của Tòa Thị Chính thưởng x1.5 Vàng & Điểm.",
+    "rumor": "Bản đồ thị trấn đang chuẩn bị mở rộng thêm các tuyến đường tự hành cho thế hệ FarmBot mới!",
+    "dialogues": {
+      "low": "Chào FarmBot! Với tư cách Thị trưởng, tôi đánh giá rất cao quy chuẩn an toàn HRI của cậu.",
+      "mid": "Báo cáo an toàn tuần này rất xuất sắc! Không một người dân nào phàn nàn về va chạm.",
+      "high": "Cậu là công dân danh dự kiểu mẫu của Pelican! Tòa thị chính luôn tự hào vì có cậu phục vụ.",
+      "morning": "Đi thị sát một vòng thị trấn để đảm bảo mọi công trình công cộng đều hoạt động trơn tru.",
+      "afternoon": "Xử lý công văn tại Tòa thị chính và duyệt ngân sách hỗ trợ bà con nông dân.",
+      "evening": "Kiểm tra đèn đường công cộng đã bật sáng đầy đủ trước khi màn đêm buông xuống.",
+      "rain": "Hệ thống thoát nước bờ kênh hoạt động tốt, không có khu vực nào trong thị trấn bị ngập úng."
+    }
+  },
+  "Bác sĩ Harvey": {
+    "role": "Bác sĩ Trạm Y Tế",
+    "age_group": "adult",
+    "safety_radius_m": 1.25,
+    "personality": "Cẩn trọng, ân cần, luôn nhắc nhở mọi người giữ gìn sức khỏe và khoảng cách an toàn.",
+    "home_id": "house_clinic",
+    "loved_items": [
+      "peach",
+      "apple",
+      "bread"
+    ],
+    "liked_items": [
+      "carrot",
+      "orange",
+      "cabbage"
+    ],
+    "hated_items": [
+      "parcel",
+      "fish"
+    ],
+    "perk_3_hearts": "Bác sĩ Harvey hỗ trợ kiểm định cảm biến an toàn y tế miễn phí cho Robot định kỳ.",
+    "perk_5_hearts": "Mở khóa Đơn Đặt Hàng Đặc Biệt Dược Liệu Tự Nhiên thưởng x1.5 Vàng & Điểm.",
+    "rumor": "Một ly nước cam tươi mỗi ngày là bí quyết giữ năng lượng dồi dào trong mọi mùa vụ.",
+    "dialogues": {
+      "low": "Chào FarmBot! Luôn duy trì vận tốc an toàn dưới 1.0 m/s để phòng tránh va chạm nhé.",
+      "mid": "Nhờ cậu chấp hành tốt khoảng cách cá nhân 0.70m mà trạm xá chưa phải sơ cứu ca trầy xước nào!",
+      "high": "Cậu chính là đại sứ an toàn y tế cộng đồng xuất sắc nhất! Tôi hoàn toàn yên tâm về cậu.",
+      "morning": "Bắt đầu ngày làm việc bằng việc khử khuẩn dụng cụ y tế và kiểm tra tủ thuốc.",
+      "afternoon": "Nhắc nhở mọi người uống đủ nước và đội nón khi làm việc ngoài đồng nắng gắt.",
+      "evening": "Đóng cửa phòng khám bệnh định kỳ, mọi cư dân hôm nay đều khỏe mạnh an vui.",
+      "rain": "Thời tiết ẩm ướt dễ gây cảm lạnh, nhớ nhắc người già và trẻ nhỏ giữ ấm cơ thể nhé."
+    }
+  },
+  "Học giả Elliott": {
+    "role": "Nhà văn Bờ Biển",
+    "age_group": "adult",
+    "safety_radius_m": 1.25,
+    "personality": "Lãng mạn, tao nhã, yêu thích thơ ca bên tiếng sóng biển và những trang sách cổ tích.",
+    "home_id": "house_elliott",
+    "loved_items": [
+      "golden_flower",
+      "peach",
+      "fish"
+    ],
+    "liked_items": [
+      "bread",
+      "apple",
+      "strawberry"
+    ],
+    "hated_items": [
+      "cabbage",
+      "parcel"
+    ],
+    "perk_3_hearts": "Elliott sáng tác bài thơ ca ngợi chú Robot chăm chỉ, vang danh khắp thung lũng.",
+    "perk_5_hearts": "Mở khóa Đơn Đặt Hàng Đặc Biệt Thi Ca Mùa Vàng thưởng x1.5 Vàng & Điểm.",
+    "rumor": "Những trang nhật ký ven bờ hồ của Willy lưu giữ nhiều huyền thoại về loài cá hoàng kim.",
+    "dialogues": {
+      "low": "Chào người bạn cơ khí thanh tao! Tiếng lướt bánh xe của cậu như nhịp điệu của một bài thơ.",
+      "mid": "Tôi đang tìm một tứ thơ đẹp về sự hòa hợp giữa công nghệ hiện đại và đồng quê yên ả.",
+      "high": "Chính cậu đã truyền cảm hứng để tôi hoàn thành chương cuối của cuốn tiểu thuyết mới!",
+      "morning": "Nhấp một ngụm trà nóng, lắng nghe tiếng sóng hồ và bắt đầu nảy ra những dòng chữ đầu tiên.",
+      "afternoon": "Dạo bước trên cầu tàu ngắm nhìn đàn hải âu bay lượn giữa bầu trời xanh biếc.",
+      "evening": "Dưới ánh nến lung linh, những ý tưởng văn chương tuôn trào như dòng suối nhỏ.",
+      "rain": "Những giọt mưa gõ nhịp trên khung cửa sổ tạo nên khúc nhạc đệm hoàn hảo cho thơ ca."
+    }
+  },
+  "Cô Abigail": {
+    "role": "Cư dân yêu khám phá",
+    "age_group": "adult",
+    "safety_radius_m": 1.25,
+    "personality": "Cá tính, yêu thích phiêu lưu mạo hiểm, chơi sáo và thích khám phá những điều bí ẩn.",
+    "home_id": "house_pierre",
+    "loved_items": [
+      "pumpkin",
+      "mushroom",
+      "bread"
+    ],
+    "liked_items": [
+      "peach",
+      "strawberry",
+      "apple"
+    ],
+    "hated_items": [
+      "cabbage",
+      "carrot"
+    ],
+    "perk_3_hearts": "Abigail tặng bản đồ đá hoa cương đánh dấu những khoáng thạch lấp lánh.",
+    "perk_5_hearts": "Mở khóa Đơn Đặt Hàng Đặc Biệt Thám Hiểm Hang Đá thưởng x1.5 Vàng & Điểm.",
+    "rumor": "Abigail thường trốn lên Đảo Rừng luyện thổi sáo dưới ánh trăng rằm mát rượi.",
+    "dialogues": {
+      "low": "Chào FarmBot! Cậu có muốn cùng tôi lẻn lên Đảo Rừng tìm kho báu bí mật không?",
+      "mid": "Tiếng sáo của tôi khi hòa cùng tiếng tích tắc động cơ của cậu nghe kỳ lạ mà thú vị ghê!",
+      "high": "Cậu là chiến hữu phiêu lưu tuyệt vời nhất! Cầm lấy chiếc nấm rừng may mắn này nhé.",
+      "morning": "Sương mù buổi sáng thích hợp nhất để tập dượt những bài phiêu lưu giả tưởng.",
+      "afternoon": "Tôi vừa tìm thấy một lối mòn mới dẫn qua bụi quả mọng phía sau nhà.",
+      "evening": "Ánh trăng đã lên, lúc này lên cầu tàu thổi khúc nhạc du dương là tuyệt nhất.",
+      "rain": "Mưa rơi xối xả làm tăng thêm vẻ kỳ bí cho những góc rừng hoang dã!"
+    }
+  },
+  "Quản nông Kent": {
+    "role": "Người giao Nhiệm vụ Nông Vụ",
+    "age_group": "adult",
+    "safety_radius_m": 1.25,
+    "personality": "Điềm tĩnh, kỷ luật, luôn đứng trực trước cối xay gió để phân công việc đồng áng.",
+    "home_id": "farm_house",
+    "loved_items": [
+      "wheat",
+      "corn",
+      "bread"
+    ],
+    "liked_items": [
+      "pumpkin",
+      "carrot",
+      "apple"
+    ],
+    "hated_items": [
+      "fish",
+      "golden_flower"
+    ],
+    "perk_3_hearts": "Kent chỉ cho Robot luống lúa mì chín sớm nhất mỗi sáng.",
+    "perk_5_hearts": "Mở khóa Đơn Đặt Hàng Đặc Biệt thưởng x1.5 Vàng & Điểm.",
+    "rumor": "Lúa mì góc Đông-Bắc nông trại chín nhanh hơn khi trời mưa.",
+    "sprite": "npc_brown",
+    "movement": "stationary",
+    "dialogues": {
+      "low": "Chào Robot. Đứng đúng quạt xanh trước mặt tôi thì mới nhận việc được nhé.",
+      "mid": "Đàn gia súc của Marnie ăn khỏe lắm, lúa mì của cậu giúp ích nhiều.",
+      "high": "Cậu là trợ thủ đáng tin nhất của nông trại này.",
+      "morning": "Chào Robot. Đứng đúng quạt xanh trước mặt tôi thì mới nhận việc được nhé.",
+      "afternoon": "Đàn gia súc của Marnie ăn khỏe lắm, lúa mì của cậu giúp ích nhiều.",
+      "evening": "Cậu là trợ thủ đáng tin nhất của nông trại này.",
+      "rain": "Mưa xuống là ruộng lúa mì mát rượi, nhớ đi chậm kẻo trượt bùn."
+    }
+  },
+  "Kỹ sư Sebastian": {
+    "role": "Người giao Nhiệm vụ Bến Hồ",
+    "age_group": "adult",
+    "safety_radius_m": 1.25,
+    "personality": "Ít nói, mê máy móc, thích ngồi đầu cầu tàu ngắm mặt hồ.",
+    "home_id": "fisher_shed",
+    "loved_items": [
+      "fish",
+      "mushroom",
+      "parcel"
+    ],
+    "liked_items": [
+      "bread",
+      "pumpkin",
+      "orange"
+    ],
+    "hated_items": [
+      "golden_flower",
+      "cabbage"
+    ],
+    "perk_3_hearts": "Sebastian chỉnh lại cảm biến phao câu giúp cá cắn câu sớm hơn.",
+    "perk_5_hearts": "Mở khóa Đơn Đặt Hàng Đặc Biệt thưởng x1.5 Vàng & Điểm.",
+    "rumor": "Đầu cầu tàu trung tâm là nơi cá lớn hay lượn vào chiều tối.",
+    "sprite": "npc_black",
+    "movement": "stationary",
+    "dialogues": {
+      "low": "...Ừ, chào. Cậu muốn nhận việc thì đứng ngay trước mặt tôi.",
+      "mid": "Thuật toán tránh người của cậu chạy mượt đấy.",
+      "high": "Tôi quý cậu. Hiếm có cỗ máy nào lịch sự như vậy.",
+      "morning": "...Ừ, chào. Cậu muốn nhận việc thì đứng ngay trước mặt tôi.",
+      "afternoon": "Thuật toán tránh người của cậu chạy mượt đấy.",
+      "evening": "Tôi quý cậu. Hiếm có cỗ máy nào lịch sự như vậy.",
+      "rain": "Mưa làm mặt hồ gợn sóng, cá cắn câu nhiều hơn."
+    }
+  },
+  "Cô giáo Penny": {
+    "role": "Người giao Nhiệm vụ Mùa Vụ",
+    "age_group": "adult",
+    "safety_radius_m": 1.25,
+    "personality": "Dịu dàng, kiên nhẫn, dạy chữ cho trẻ con trong làng và rất yêu hoa.",
+    "home_id": "house_willy",
+    "loved_items": [
+      "golden_flower",
+      "strawberry",
+      "peach"
+    ],
+    "liked_items": [
+      "bread",
+      "apple",
+      "cabbage"
+    ],
+    "hated_items": [
+      "fish",
+      "parcel"
+    ],
+    "perk_3_hearts": "Penny dạy Robot cách nhận biết Hoa Cúc Vàng mọc dại ven sông.",
+    "perk_5_hearts": "Mở khóa Đơn Đặt Hàng Đặc Biệt thưởng x1.5 Vàng & Điểm.",
+    "rumor": "Hoa Cúc Vàng hay mọc ở bờ sông Map 1 vào mùa xuân.",
+    "sprite": "npc_blonde",
+    "movement": "stationary",
+    "dialogues": {
+      "low": "Chào em Robot! Cô đang cần người giúp tìm hoa cúc vàng đây.",
+      "mid": "Lũ trẻ trong làng kể về em suốt, em đi đứng cẩn thận lắm.",
+      "high": "Em là học trò ngoan nhất của cô, dù em là robot!",
+      "morning": "Chào em Robot! Cô đang cần người giúp tìm hoa cúc vàng đây.",
+      "afternoon": "Lũ trẻ trong làng kể về em suốt, em đi đứng cẩn thận lắm.",
+      "evening": "Em là học trò ngoan nhất của cô, dù em là robot!",
+      "rain": "Mưa thì cô cho lũ trẻ ở trong nhà đọc truyện."
+    }
+  },
+  "Dược sĩ Maru": {
+    "role": "Người giao Nhiệm vụ Y Tế",
+    "age_group": "adult",
+    "safety_radius_m": 1.25,
+    "personality": "Thông minh, tỉ mỉ, phụ giúp Bác sĩ Harvey bào chế thuốc bổ.",
+    "home_id": "clinic_house",
+    "loved_items": [
+      "peach",
+      "orange",
+      "strawberry"
+    ],
+    "liked_items": [
+      "apple",
+      "carrot",
+      "bread"
+    ],
+    "hated_items": [
+      "mushroom",
+      "wild_berry"
+    ],
+    "perk_3_hearts": "Maru hiệu chỉnh radar an toàn để nhận diện người già từ xa hơn.",
+    "perk_5_hearts": "Mở khóa Đơn Đặt Hàng Đặc Biệt thưởng x1.5 Vàng & Điểm.",
+    "rumor": "Đào Tiên ở vườn quả Map 2 là nguyên liệu thuốc bổ tốt nhất.",
+    "sprite": "npc_purple",
+    "movement": "stationary",
+    "dialogues": {
+      "low": "Chào Robot! Mình cần Đào Tiên cho phòng khám, giúp mình nhé.",
+      "mid": "Nhờ cậu mà người già trong làng có thuốc bổ đều đặn.",
+      "high": "Cậu là đồng nghiệp tuyệt vời của phòng khám!",
+      "morning": "Chào Robot! Mình cần Đào Tiên cho phòng khám, giúp mình nhé.",
+      "afternoon": "Nhờ cậu mà người già trong làng có thuốc bổ đều đặn.",
+      "evening": "Cậu là đồng nghiệp tuyệt vời của phòng khám!",
+      "rain": "Trời mưa nhiều người bị cảm, phòng khám đông lắm."
+    }
+  },
+  "Cô Emily": {
+    "role": "Quản lý Quán Nước tuần phố",
+    "age_group": "adult",
+    "safety_radius_m": 1.25,
+    "personality": "Vui vẻ, yêu màu sắc, thích đi một vòng quảng trường trước giờ mở quán.",
+    "home_id": "stardrop_saloon",
+    "loved_items": [
+      "orange",
+      "strawberry",
+      "golden_flower"
+    ],
+    "liked_items": [
+      "apple",
+      "bread",
+      "peach"
+    ],
+    "hated_items": [
+      "fish",
+      "corn"
+    ],
+    "perk_3_hearts": "Emily mời Robot ly nước cam miễn phí mỗi tối ở Saloon.",
+    "perk_5_hearts": "Mở khóa Đơn Đặt Hàng Đặc Biệt thưởng x1.5 Vàng & Điểm.",
+    "rumor": "Giếng cổ giữa quảng trường được xây từ thời ông bà Evelyn.",
+    "sprite": "npc_08_maid",
+    "movement": "patrol",
+    "dialogues": {
+      "low": "Chào Robot! Mình đi dạo một vòng rồi về mở quán đây.",
+      "mid": "Cậu né người đi bộ khéo ghê, như đang khiêu vũ vậy!",
+      "high": "Cậu là vị khách quen đáng yêu nhất của Saloon.",
+      "morning": "Chào Robot! Mình đi dạo một vòng rồi về mở quán đây.",
+      "afternoon": "Cậu né người đi bộ khéo ghê, như đang khiêu vũ vậy!",
+      "evening": "Cậu là vị khách quen đáng yêu nhất của Saloon.",
+      "rain": "Mưa rồi, chắc tối nay quán đông khách lắm."
+    }
+  },
+  "Anh Shane": {
+    "role": "Điều phối nông sản",
+    "age_group": "adult",
+    "safety_radius_m": 1.25,
+    "personality": "Cộc cằn bên ngoài nhưng chăm chỉ, chạy dọc các luống ruộng gom hàng cho kho.",
+    "home_id": "joja_depot",
+    "loved_items": [
+      "pumpkin",
+      "corn",
+      "bread"
+    ],
+    "liked_items": [
+      "tomato",
+      "carrot",
+      "wheat"
+    ],
+    "hated_items": [
+      "golden_flower",
+      "peach"
+    ],
+    "perk_3_hearts": "Shane cho Robot đi tắt qua kho Joja để giao hàng nhanh hơn.",
+    "perk_5_hearts": "Mở khóa Đơn Đặt Hàng Đặc Biệt thưởng x1.5 Vàng & Điểm.",
+    "rumor": "Kho Joja trả giá bí ngô cao nhất vào mùa thu.",
+    "sprite": "npc_05_blue_boy",
+    "movement": "patrol",
+    "dialogues": {
+      "low": "Tránh đường, tôi đang gom hàng... à, cậu đi chậm lại là được.",
+      "mid": "Cậu làm việc nhanh mà vẫn an toàn, tôi phục đấy.",
+      "high": "Được rồi, cậu là bạn tôi. Đừng kể với ai nhé.",
+      "morning": "Tránh đường, tôi đang gom hàng... à, cậu đi chậm lại là được.",
+      "afternoon": "Cậu làm việc nhanh mà vẫn an toàn, tôi phục đấy.",
+      "evening": "Được rồi, cậu là bạn tôi. Đừng kể với ai nhé.",
+      "rain": "Mưa thì luống ruộng lầy lội, đi cẩn thận."
+    }
+  }
+}

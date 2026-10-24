@@ -6,7 +6,7 @@ from objects.static_object import ShapeType
 from objects.semi_static_object import SemiStaticState
 from human.human_agent import HumanAgent, HumanActivity
 from human.social_space import get_gaussian_ellipse_axes
-from .stardew_sprites import StardewSpriteBank
+from .sprite_bank import SpriteBank as StardewSpriteBank
 
 
 class PygameRenderer:

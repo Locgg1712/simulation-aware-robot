@@ -26,3 +26,7 @@ dist/
 *.npz
 *.pkl
 *.zip
+
+# Runtime and game assets are intentionally versioned.
+!assets/
+!assets/**/*.png
