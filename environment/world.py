@@ -92,8 +92,8 @@ class World:
         self.num_interacting_groups: int = int(world_cfg.get("num_interacting_groups", 1))
         self.num_walking_groups: int = int(world_cfg.get("num_walking_groups", 1))
 
-        self.use_social_astar: bool = False
-        self.replan_interval: int = 8
+        self.use_social_astar: bool = True
+        self.replan_interval: int = 6
 
         self.static_objects: list[StaticObject] = []
         self.semi_static_objects: list[SemiStaticObject] = []
@@ -114,6 +114,9 @@ class World:
         self.has_quest_item: bool = True
         self.safety_hearts: int = 3
         self.active_event: dict | None = None
+        self.fan_reward_claimed: bool = False
+        self.event_bypass_claimed: bool = False
+        self.last_collision_tier: int = 0
         self.hri_status: dict = {
             "d_npc": 5.0,
             "delta_alpha_npc": 0.0,
@@ -175,6 +178,9 @@ class World:
         self.has_quest_item = random.random() < 0.75
         self.safety_hearts = 3
         self.active_event = None
+        self.fan_reward_claimed = False
+        self.event_bypass_claimed = False
+        self.last_collision_tier = 0
 
         for _ in range(15):
             (
@@ -255,7 +261,7 @@ class World:
         if self.robot is None:
             return
         from game.rl_bridge import HeadlessGameSession
-        from game.constants import px_to_m, SCREEN_W, SCREEN_H
+        from game.constants import SCREEN_W, SCREEN_H
 
         if self._headless_game is None:
             self._headless_game = HeadlessGameSession()
@@ -272,15 +278,21 @@ class World:
 
         sx_scale = self.width / float(SCREEN_W)
         sy_scale = self.height / float(SCREEN_H)
+        dt_scale = 0.31
 
         # 1. Gắn kết các Xe kéo AGV & Thú nuôi thực từ `game/`
         base_dyn_id = 500
         for agv in self._headless_game.agvs:
             wx, wy = agv.x * sx_scale, agv.y * sy_scale
-            if math.hypot(wx - self.robot.x, wy - self.robot.y) < 1.35 and agv.waypoints:
+            if (
+                math.hypot(wx - self.robot.x, wy - self.robot.y) < 1.50
+                or math.hypot(wx - self.robot.goal_x, wy - self.robot.goal_y) < 1.35
+            ) and agv.waypoints:
                 best_i, best_d = 0, -1.0
                 for idx, (px, py) in enumerate(agv.waypoints):
-                    d = math.hypot(px * sx_scale - self.robot.x, py * sy_scale - self.robot.y)
+                    d_r = math.hypot(px * sx_scale - self.robot.x, py * sy_scale - self.robot.y)
+                    d_g = math.hypot(px * sx_scale - self.robot.goal_x, py * sy_scale - self.robot.goal_y)
+                    d = min(d_r, d_g)
                     if d > best_d:
                         best_d = d
                         best_i = idx
@@ -288,14 +300,16 @@ class World:
                 agv.wp_idx = (best_i + 1) % len(agv.waypoints)
                 wx, wy = agv.x * sx_scale, agv.y * sy_scale
 
-            wx, wy = self.spawn_manager.sample_free_point((wx, wy), 0.35, self.static_objects)
+            wx, wy = self.spawn_manager.sample_free_point((wx, wy), 0.38, self.static_objects)
             agv.x, agv.y = wx / sx_scale, wy / sy_scale
+            vx_init = agv.speed * math.cos(agv.theta) * sx_scale * dt_scale
+            vy_init = agv.speed * math.sin(agv.theta) * sy_scale * dt_scale
             dyn_obj = DynamicObject(
                 obj_id=base_dyn_id,
                 x=wx,
                 y=wy,
                 radius=0.35,
-                speed=px_to_m(agv.speed),
+                speed=math.hypot(vx_init, vy_init),
                 theta=agv.theta,
                 waypoints=[],
                 name=f"game_agv_{base_dyn_id}",
@@ -307,18 +321,23 @@ class World:
 
         for anim in self._headless_game.animals[:3]:
             wx, wy = anim.x * sx_scale, anim.y * sy_scale
-            if math.hypot(wx - self.robot.x, wy - self.robot.y) < 1.25:
+            if (
+                math.hypot(wx - self.robot.x, wy - self.robot.y) < 1.35
+                or math.hypot(wx - self.robot.goal_x, wy - self.robot.goal_y) < 1.25
+            ):
                 continue
-            wx, wy = self.spawn_manager.sample_free_point((wx, wy), 0.28, self.static_objects)
+            wx, wy = self.spawn_manager.sample_free_point((wx, wy), 0.32, self.static_objects)
             anim.x, anim.y = wx / sx_scale, wy / sy_scale
-            anim_spd_px = math.hypot(getattr(anim, "vx", 0.0), getattr(anim, "vy", 0.0))
-            anim_theta = math.atan2(getattr(anim, "vy", 0.0), getattr(anim, "vx", 0.0))
+            vx_init = getattr(anim, "vx", 0.0) * sx_scale * dt_scale
+            vy_init = getattr(anim, "vy", 0.0) * sy_scale * dt_scale
+            anim_spd_m = math.hypot(vx_init, vy_init)
+            anim_theta = math.atan2(vy_init, vx_init) if anim_spd_m > 1e-4 else 0.0
             dyn_obj = DynamicObject(
                 obj_id=base_dyn_id,
                 x=wx,
                 y=wy,
                 radius=0.28,
-                speed=px_to_m(anim_spd_px),
+                speed=anim_spd_m,
                 theta=anim_theta,
                 waypoints=[],
                 name=f"game_{getattr(anim, 'sprite_key', 'animal')}_{base_dyn_id}",
@@ -332,11 +351,16 @@ class World:
         base_npc_id = 200
         for npc in self._headless_game.npcs:
             wx, wy = npc.x * sx_scale, npc.y * sy_scale
-            if math.hypot(wx - self.robot.x, wy - self.robot.y) < 1.35:
+            if (
+                math.hypot(wx - self.robot.x, wy - self.robot.y) < 1.45
+                or math.hypot(wx - self.robot.goal_x, wy - self.robot.goal_y) < 1.25
+            ):
                 if npc.patrol_points:
                     best_i, best_d = 0, -1.0
                     for idx, (px, py) in enumerate(npc.patrol_points):
-                        d = math.hypot(px * sx_scale - self.robot.x, py * sy_scale - self.robot.y)
+                        d_r = math.hypot(px * sx_scale - self.robot.x, py * sy_scale - self.robot.y)
+                        d_g = math.hypot(px * sx_scale - self.robot.goal_x, py * sy_scale - self.robot.goal_y)
+                        d = min(d_r, d_g)
                         if d > best_d:
                             best_d = d
                             best_i = idx
@@ -344,9 +368,13 @@ class World:
                     npc.wp_idx = (best_i + 1) % len(npc.patrol_points)
                     wx, wy = npc.x * sx_scale, npc.y * sy_scale
                 else:
-                    continue
+                    # NPC đứng yên quá sát điểm xuất phát hoặc đích -> dịch nhẹ sang rìa đường
+                    wx, wy = self.spawn_manager.sample_free_point(
+                        (wx + 1.15, wy - 0.85), 0.35, self.static_objects
+                    )
+                    npc.x, npc.y = wx / sx_scale, wy / sy_scale
 
-            wx, wy = self.spawn_manager.sample_free_point((wx, wy), 0.30, self.static_objects)
+            wx, wy = self.spawn_manager.sample_free_point((wx, wy), 0.35, self.static_objects)
             npc.x, npc.y = wx / sx_scale, wy / sy_scale
             wps_world = [
                 (px * sx_scale, py * sy_scale) for (px, py) in (npc.patrol_points or [])
@@ -360,7 +388,7 @@ class World:
                 x=wx,
                 y=wy,
                 theta=npc.theta,
-                desired_speed=max(0.4, px_to_m(npc.base_speed)),
+                desired_speed=max(0.25, npc.base_speed * sx_scale * dt_scale),
                 radius=0.30,
                 waypoints=wps_world,
                 name=npc.name,
@@ -368,11 +396,15 @@ class World:
                 safety_radius=safe_r,
             )
             h_agent._from_game_npc = True
-            vx_m = px_to_m(npc.vx)
-            vy_m = px_to_m(npc.vy)
-            h_agent.set_velocity(vx_m, vy_m)
-            if h_agent.speed < 0.05:
-                h_agent.theta = npc.theta
+            if getattr(npc, "is_home_at_night", False):
+                h_agent.x, h_agent.y = -100.0, -100.0
+                h_agent.set_velocity(0.0, 0.0)
+            else:
+                vx_m = npc.vx * sx_scale * dt_scale
+                vy_m = npc.vy * sy_scale * dt_scale
+                h_agent.set_velocity(vx_m, vy_m)
+                if h_agent.speed < 0.05:
+                    h_agent.theta = npc.theta
             self.humans.append(h_agent)
             self._game_npc_bindings.append((h_agent, npc))
             base_npc_id += 1
@@ -437,20 +469,26 @@ class World:
         """Đồng bộ vị trí, vận tốc và hướng nhìn từ `HeadlessGameSession` sang `World` ở mỗi bước `step()`."""
         if self._headless_game is None or self.robot is None:
             return
-        from game.constants import px_to_m, SCREEN_W, SCREEN_H
+        from game.constants import SCREEN_W, SCREEN_H
 
         sx_scale = self.width / float(SCREEN_W)
         sy_scale = self.height / float(SCREEN_H)
 
         self._headless_game.atmosphere.current_weather = "rain" if self.is_rain else "sunny"
         self._headless_game.step_entities(
-            self.dt, self.robot.x, self.robot.y, self.width, self.height
+            self.dt,
+            self.robot.x,
+            self.robot.y,
+            self.width,
+            self.height,
+            entity_dt_scale=0.31,
         )
         self.clock_hour = float(
             self._headless_game.schedules.get_time_info(self._headless_game.sim_time)[0]
         )
 
         for dyn_obj, ent, kind in self._game_dyn_bindings:
+            px, py = dyn_obj.x, dyn_obj.y
             wx = ent.x * sx_scale
             wy = ent.y * sy_scale
             collided, _ = check_robot_static_collision(
@@ -467,20 +505,23 @@ class World:
             else:
                 ent.x = dyn_obj.x / sx_scale
                 ent.y = dyn_obj.y / sy_scale
-            if kind == "agv":
+
+            vx_real = (dyn_obj.x - px) / max(1e-5, self.dt)
+            vy_real = (dyn_obj.y - py) / max(1e-5, self.dt)
+            real_spd = math.hypot(vx_real, vy_real)
+            dyn_obj.speed = real_spd
+            if real_spd > 1e-3:
+                dyn_obj.theta = math.atan2(vy_real, vx_real)
+            elif kind == "agv":
                 dyn_obj.theta = ent.theta
-                dyn_obj.speed = (
-                    px_to_m(ent.speed) if getattr(ent, "mode", "patrol") == "patrol" else 0.0
-                )
-            else:
-                anim_vx = getattr(ent, "vx", 0.0)
-                anim_vy = getattr(ent, "vy", 0.0)
-                anim_spd_px = math.hypot(anim_vx, anim_vy)
-                if anim_spd_px > 1e-3:
-                    dyn_obj.theta = math.atan2(anim_vy, anim_vx)
-                dyn_obj.speed = px_to_m(anim_spd_px)
 
         for h_agent, npc in self._game_npc_bindings:
+            if getattr(npc, "is_home_at_night", False):
+                h_agent.x, h_agent.y = -100.0, -100.0
+                h_agent.set_velocity(0.0, 0.0)
+                continue
+
+            px, py = h_agent.x, h_agent.y
             wx = npc.x * sx_scale
             wy = npc.y * sy_scale
             collided, _ = check_robot_static_collision(
@@ -491,18 +532,28 @@ class World:
                 world_width=self.width,
                 world_height=self.height,
             )
-            if not collided:
+            # Không để NPC tự bước đè lên Robot khi Robot đã chủ động dừng chờ nhường đường
+            hit_stopped_robot = (
+                self.robot.v < 0.05
+                and math.hypot(wx - self.robot.x, wy - self.robot.y)
+                <= (self.robot.radius + h_agent.radius + 0.04)
+            )
+            if not collided and not hit_stopped_robot:
                 h_agent.x = wx
                 h_agent.y = wy
             else:
                 npc.x = h_agent.x / sx_scale
                 npc.y = h_agent.y / sy_scale
-                if npc.patrol_points:
+                if collided and npc.patrol_points:
                     npc.wp_idx = (npc.wp_idx + 1) % len(npc.patrol_points)
 
-            vx_m = px_to_m(npc.vx)
-            vy_m = px_to_m(npc.vy)
-            h_agent.set_velocity(vx_m, vy_m)
+            if px < -50.0 or py < -50.0:
+                px, py = h_agent.x, h_agent.y
+
+            h_agent.set_velocity(
+                (h_agent.x - px) / max(1e-5, self.dt),
+                (h_agent.y - py) / max(1e-5, self.dt),
+            )
             if h_agent.speed < 0.05:
                 h_agent.theta = npc.theta
 
@@ -529,34 +580,34 @@ class World:
             global_path=self.global_path,
             goal_x=self.robot.goal_x,
             goal_y=self.robot.goal_y,
+            static_grid=self.static_grid,
+            grid_res=self.grid_res,
         )
         self.robot.subgoal_x = self.subgoal_info["subgoal_x"]
         self.robot.subgoal_y = self.subgoal_info["subgoal_y"]
 
     def _build_static_grid(self):
+        """
+        Đánh dấu vật cản tĩnh trên lưới `static_grid` (80x80) có tính đến bán kính thân Robot
+        (`inflate_r = 0.30m`) để lộ trình A* không bao giờ đi sát mép sông, cầu hoặc góc nhà.
+        """
         self.static_grid.fill(0)
-        half_res = self.grid_res / 2.0
+        inflate_r = 0.30
 
-        for obj in self.static_objects:
-            if obj.shape == ShapeType.RECTANGLE:
-                rx, ry, rw, rh = obj.bbox
-                c_min = max(0, int(rx / self.grid_res))
-                c_max = min(self.grid_cols - 1, int((rx + rw) / self.grid_res))
-                r_min = max(0, int(ry / self.grid_res))
-                r_max = min(self.grid_rows - 1, int((ry + rh) / self.grid_res))
-                self.static_grid[r_min : r_max + 1, c_min : c_max + 1] = 1
-            elif obj.shape == ShapeType.CIRCLE:
-                rad = obj.radius + half_res * 0.5
-                c_min = max(0, int((obj.x - rad) / self.grid_res))
-                c_max = min(self.grid_cols - 1, int((obj.x + rad) / self.grid_res))
-                r_min = max(0, int((obj.y - rad) / self.grid_res))
-                r_max = min(self.grid_rows - 1, int((obj.y + rad) / self.grid_res))
-                for r in range(r_min, r_max + 1):
-                    cy = (r + 0.5) * self.grid_res
-                    for c in range(c_min, c_max + 1):
-                        cx = (c + 0.5) * self.grid_res
-                        if math.hypot(cx - obj.x, cy - obj.y) <= rad:
-                            self.static_grid[r, c] = 1
+        for r in range(self.grid_rows):
+            cy = (r + 0.5) * self.grid_res
+            for c in range(self.grid_cols):
+                cx = (c + 0.5) * self.grid_res
+                collided, _ = check_robot_static_collision(
+                    x=cx,
+                    y=cy,
+                    radius=inflate_r,
+                    static_objects=self.static_objects,
+                    world_width=self.width,
+                    world_height=self.height,
+                )
+                if collided:
+                    self.static_grid[r, c] = 1
 
     def update_occupancy_grid(self):
         np.copyto(self.occupancy_grid, self.static_grid)
@@ -574,7 +625,8 @@ class World:
         Cập nhật thông số Vùng Quạt Tương tác Trước Mặt (Khối 5) và
         Radar An toàn Nhận thức Độ Tuổi (Khối 6) đối với NPC gần nhất.
         """
-        if self.robot is None or not self.humans:
+        active_humans = [h for h in self.humans if h.x >= 0.0 and h.y >= 0.0]
+        if self.robot is None or not active_humans:
             self.hri_status = {
                 "d_npc": 5.0,
                 "delta_alpha_npc": 0.0,
@@ -588,7 +640,7 @@ class World:
             return
 
         nearest_h = min(
-            self.humans,
+            active_humans,
             key=lambda h: math.hypot(h.x - self.robot.x, h.y - self.robot.y),
         )
         dx = self.robot.x - nearest_h.x
@@ -695,7 +747,7 @@ class World:
 
         for dyn in self.dynamic_objects:
             if not getattr(dyn, "_from_game_entity", False):
-                dyn.update(self.dt, self.static_objects, self.width, self.height)
+                dyn.update(self.dt, self.static_objects, self.width, self.height, robot=self.robot)
 
         non_game_humans = [
             h for h in self.humans if not getattr(h, "_from_game_npc", False)
@@ -735,8 +787,12 @@ class World:
             if hit_obj is not None and isinstance(hit_obj, HumanAgent):
                 if self.robot.v >= 0.85 * self.robot.v_max:
                     self.safety_hearts = 0
+                    self.last_collision_tier = 4
                 else:
                     self.safety_hearts = max(0, self.safety_hearts - 1)
+                    self.last_collision_tier = 3 if self.safety_hearts == 0 else 2
+            else:
+                self.last_collision_tier = 1
             self.robot.set_discrete_action(RobotAction.STOP)
         else:
             self.robot.apply_pose(next_x, next_y, next_theta)

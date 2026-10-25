@@ -105,6 +105,14 @@ class SemiStaticObject(BaseObject):
                 self.state = SemiStaticState.OPEN
                 self.timer = 0.0
         elif self.state == SemiStaticState.OPEN:
+            # Cảm biến an toàn chống kẹt: không đóng sập cửa khi Robot đang đi ngang trong lòng cửa
+            if robot_pos is not None:
+                rx, ry, rw, rh = self.bbox
+                cx = max(rx, min(robot_pos[0], rx + rw))
+                cy = max(ry, min(robot_pos[1], ry + rh))
+                if math.hypot(robot_pos[0] - cx, robot_pos[1] - cy) <= 0.65:
+                    self.timer = min(self.timer, max(0.0, self.open_duration - 0.5))
+                    return
             if self.timer >= self.open_duration:
                 self.state = SemiStaticState.CLOSING
                 self.timer = 0.0

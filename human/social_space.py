@@ -66,6 +66,8 @@ def evaluate_social_violations(
     intruded_humans: list[int] = []
 
     for h in humans:
+        if h.x < 0.0 or h.y < 0.0:
+            continue
         cost = compute_personal_space_cost(robot_x, robot_y, h)
         if cost > max_cost:
             max_cost = cost

@@ -1,20 +1,29 @@
 # configs/rl_hyperparams.yaml
 state_space:
-  total_dim: 106
+  total_dim: 128
   robot_goal_dim: 6
   lidar_rays: 16
   top_k_objects: 3          # Mỗi object 8 chiều -> 24 chiều
   top_m_humans: 5           # Mỗi human 12 chiều -> 60 chiều
+  front_fan_hri_dim: 4      # Vùng quạt tương tác HRI trước mặt NPC -> 4 chiều
+  age_safety_radar_dim: 4   # Nhóm tuổi (adult/elder/child) & bán kính R_safe -> 4 chiều
+  farm_env_dim: 6           # Khay đồ, đồng hồ ngày-đêm, mưa/tối, mùa, trái tim an toàn -> 6 chiều
+  stochastic_events_dim: 8  # Vector sự kiện ngẫu nhiên động CMDP -> 8 chiều
 
 reward_weights:
   goal_reward: 100.0
   collision_penalty: -100.0
-  progress_weight: 2.5
+  progress_weight: 3.5
   time_penalty: -0.05
   social_space_min_penalty: -0.5
   social_space_max_penalty: -2.0
   group_splitting_penalty: -5.0
-  smart_wait_bonus: 0.2
+  smart_wait_bonus: 0.25
+  fan_hri_bonus: 15.0
+  rear_approach_penalty: -3.0
+  elder_speed_weight: -4.0
+  elder_slow_bonus: 1.0
+  event_bypass_bonus: 5.0
 
 training:
   algorithm: "PPO"          # Hoặc "DQN"

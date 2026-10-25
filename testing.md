@@ -126,9 +126,9 @@ python main.py
 
 ---
 
-### Phase 5: Môi trường Gymnasium, State 106 chiều & Đa mục tiêu Reward
+### Phase 5: Môi trường Gymnasium, State 128 chiều & Đa mục tiêu Reward
 
-**Mục tiêu kiểm thử:** Xác nhận lớp `ContextAwareNavEnv` tuân thủ chuẩn API của Gymnasium/Stable-Baselines3, vector quan sát có đúng kích thước $(106,)$ trong hệ tọa độ Robot-centric và hàm phần thưởng tính toán chính xác từng thành phần.
+**Mục tiêu kiểm thử:** Xác nhận lớp `ContextAwareNavEnv` tuân thủ chuẩn API của Gymnasium/Stable-Baselines3, vector quan sát có đúng kích thước $(128,)$ trong hệ tọa độ Robot-centric và hàm phần thưởng tính toán chính xác từng thành phần.
 
 **Lệnh chạy kiểm định tự động:**
 ```bash
@@ -142,7 +142,7 @@ python main.py --check-env
 
 **Tiêu chuẩn nghiệm thu (Pass Criteria):**
 * [x] Lệnh `python main.py --check-env` báo `[OK] Vượt qua bài kiểm tra check_env() của Stable-Baselines3 không lỗi!`.
-* [x] Vector quan sát trả về có `shape == (106,)`, `dtype == float32`, không chứa giá trị `NaN` hoặc `Inf`.
+* [x] Vector quan sát trả về có `shape == (128,)`, `dtype == float32`, không chứa giá trị `NaN` hoặc `Inf`.
 * [x] Khi `include_social_context=False` (dùng cho Baseline 3), 6 chiều One-Hot của mỗi người trong Khối 4 đều bằng $0.0$.
 * [x] `Smart Wait Bonus (+0.2)` được cộng chính xác khi Robot chọn `WAIT`/`SLOW_DOWN` trước cửa đang mở hoặc người đang `CROSSING`.
 
@@ -209,7 +209,7 @@ check_env(env, warn=True)
 
 for topo_id in range(1, 16):
     obs, info = env.reset(seed=100 + topo_id, options={'topology_id': topo_id})
-    assert obs.shape == (106,), f'Sai kich thuoc state tai topology {topo_id}'
+    assert obs.shape == (128,), f'Sai kich thuoc state tai topology {topo_id}'
     agent = RuleBasedAgent(mode='social')
     for _ in range(15):
         act = int(agent.select_action(env.world))

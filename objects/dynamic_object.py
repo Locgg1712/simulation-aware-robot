@@ -51,6 +51,7 @@ class DynamicObject(BaseObject):
         static_objects: Sequence[StaticObject],
         world_width: float,
         world_height: float,
+        robot=None,
     ):
         """Cập nhật vị trí theo Waypoints hoặc đổi hướng khi chạm chướng ngại vật tĩnh."""
         if self.waypoints:
@@ -67,6 +68,17 @@ class DynamicObject(BaseObject):
 
         next_x = self.x + self.vx * dt
         next_y = self.y + self.vy * dt
+
+        # Nếu Robot đang dừng nhường đường, vật thể động không tự đâm xuyên vào Robot đang đứng yên
+        if (
+            robot is not None
+            and getattr(robot, "v", 0.0) < 0.05
+            and math.hypot(next_x - robot.x, next_y - robot.y) <= (self.radius + robot.radius + 0.05)
+        ):
+            self.theta = math.atan2(
+                math.sin(self.theta + math.pi * 0.5), math.cos(self.theta + math.pi * 0.5)
+            )
+            return
 
         collided, _ = check_robot_static_collision(
             x=next_x,

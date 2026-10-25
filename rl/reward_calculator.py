@@ -1,4 +1,4 @@
-# Phase 5 & Mục 12.2: Tính toán chi tiết từng thành phần Hàm Phần Thưởng Mở Rộng FarmBot Town
+# Phase 5 & Mục 12.2: Tính toán chi tiết từng thành phần Hàm Phần Thưởng Mở Rộng FarmBot Town (128 Chiều)
 # rl/reward_calculator.py
 import math
 from environment.world import World
@@ -10,7 +10,8 @@ from human.human_agent import SocialContext
 class RewardCalculator:
     """
     Tính toán hàm phần thưởng mở rộng đa mục tiêu tại mỗi bước thời gian t (Mục 6.2 & Mục 12.2):
-        R_t^ext = R_terminal + R_progress + R_time + R_social + R_group + R_context + R_fan + R_elder_safe + R_event
+        R_t^ext = R_terminal + R_progress + R_time + R_social + R_group + R_context
+                  + R_fan + R_elder_safe + R_knockdown + R_run_over + R_event
     """
 
     def __init__(self, reward_cfg: dict | None = None):
@@ -20,6 +21,11 @@ class RewardCalculator:
         self.progress_weight: float = float(cfg.get("progress_weight", 3.5))
         self.time_penalty: float = float(cfg.get("time_penalty", -0.05))
         self.smart_wait_bonus: float = float(cfg.get("smart_wait_bonus", 0.25))
+        self.fan_hri_bonus: float = float(cfg.get("fan_hri_bonus", 15.0))
+        self.rear_approach_penalty: float = float(cfg.get("rear_approach_penalty", -3.0))
+        self.elder_speed_weight: float = float(cfg.get("elder_speed_weight", -4.0))
+        self.elder_slow_bonus: float = float(cfg.get("elder_slow_bonus", 1.0))
+        self.event_bypass_bonus: float = float(cfg.get("event_bypass_bonus", 5.0))
         self.use_social_reward: bool = bool(cfg.get("use_social_reward", True))
 
     def compute(
@@ -38,12 +44,26 @@ class RewardCalculator:
         if robot is None:
             return 0.0, {}
 
-        # 1. Terminal Reward (Chạm đích +100.0 hoặc Va chạm -100.0 / Cán tốc độ cao)
+        # 1. Terminal Reward & 4-Tier Safety Penalties (R_knockdown / R_run_over - Mục 12.2)
         r_terminal = 0.0
+        r_knockdown = 0.0
+        r_run_over = 0.0
         if world.is_collision:
-            r_terminal = self.collision_penalty
-            if getattr(world, "safety_hearts", 3) <= 0:
-                r_terminal -= 50.0
+            tier = int(getattr(world, "last_collision_tier", 1))
+            if tier == 4:
+                # Cấp 4: Cán qua người ở tốc độ cao (Lethal Run-Over -> -500.0)
+                r_run_over = -500.0
+                r_terminal = r_run_over
+            elif tier == 3:
+                # Cấp 3: Tái phạm đâm ngã mất hết 3 Tim (Multi-Hit -> -250.0)
+                r_knockdown = -250.0
+                r_terminal = r_knockdown
+            elif tier == 2:
+                # Cấp 2: Đâm ngã NPC lần 1 hoặc lần 2 (Knockdown -> -100.0)
+                r_knockdown = -100.0
+                r_terminal = r_knockdown
+            else:
+                r_terminal = self.collision_penalty
         elif world.is_goal_reached:
             r_terminal = self.goal_reward
 
@@ -71,11 +91,13 @@ class RewardCalculator:
         if robot.v < 0.02 and not has_wait_ctx and not world.is_goal_reached:
             r_time -= 0.08
 
-        # 4. Social Space Penalty & Group Splitting Penalty
+        # 4. Social Space, Group Splitting & Mở rộng FarmBot Town (Mục 12.2)
         r_social = 0.0
         r_group = 0.0
         r_context = 0.0
-        r_hri_ext = 0.0
+        r_fan = 0.0
+        r_elder_safe = 0.0
+        r_event = 0.0
 
         if self.use_social_reward:
             soc = world.social_status
@@ -93,32 +115,62 @@ class RewardCalculator:
                 if has_wait_ctx:
                     r_context = self.smart_wait_bonus
 
-            # 5. Thành phần mở rộng FarmBot Town: Vùng Quạt HRI, Radar Độ Tuổi & Sự Kiện Động
+            # 5a. Phần thưởng Định hướng Vùng Quạt HRI (R_fan - Mục 12.2.1):
+            #     +15.0 khi thỏa mãn trọn vẹn 4 điều kiện vùng quạt (nhận 1 lần/episode tránh farm điểm),
+            #     +2.0 * cos(delta_alpha_npc) * dt khi tiếp cận từ phía trước mặt,
+            #     -3.0 khi áp sát NPC từ sau lưng (delta_alpha_npc > 110 deg, d < 1.0m).
             hri = getattr(world, "hri_status", {})
-            if hri.get("rear_approach", False):
-                r_hri_ext -= 0.65
+            d_npc = float(hri.get("d_npc", 5.0))
+            d_alpha_npc = float(hri.get("delta_alpha_npc", 0.0))
+
+            if hri.get("in_fan_ok", False) and not getattr(world, "fan_reward_claimed", False):
+                r_fan += self.fan_hri_bonus
+                world.fan_reward_claimed = True
+            elif hri.get("rear_approach", False):
+                r_fan += self.rear_approach_penalty * world.dt
             elif (
-                hri.get("d_npc", 5.0) <= 1.85
-                and abs(hri.get("delta_alpha_npc", math.pi)) <= math.radians(35.0)
-                and robot.v <= 0.55
+                d_npc <= 1.85
+                and abs(d_alpha_npc) <= math.radians(35.0)
+                and 0.05 <= robot.v <= 0.60
+                and delta_subgoal > 0.0
             ):
-                r_hri_ext += 0.12 * math.cos(hri.get("delta_alpha_npc", 0.0))
+                r_fan += (2.0 * math.cos(d_alpha_npc)) * world.dt
 
-            r_hri_ext += float(hri.get("elder_speed_violation", 0.0)) * 0.35
-            if hri.get("elder_smart_yield", False):
-                r_hri_ext += 0.30
+            # 5b. Thưởng/Phạt An toàn Đối tượng Nhạy cảm (R_elder_safe - Mục 12.2.2):
+            #     -4.0 * (v/v_max) * ((R_safe - d)/R_safe) nếu v > 0.30 m/s trong vùng nhạy cảm,
+            #     +1.0 * dt nếu chủ động SLOW_DOWN khi đi qua vùng nhạy cảm của người già / trẻ nhỏ.
+            age_radar = hri.get("nearest_age_radar", [1.0, 0.0, 0.0, 0.625])
+            is_sensitive = len(age_radar) >= 3 and (age_radar[1] > 0.5 or age_radar[2] > 0.5)
+            r_safe = float(age_radar[3]) * 2.0 if len(age_radar) >= 4 else 1.25
+            if is_sensitive and d_npc <= r_safe:
+                if robot.v > 0.30:
+                    ratio = max(0.0, (r_safe - d_npc) / max(0.1, r_safe))
+                    r_elder_safe += (
+                        self.elder_speed_weight
+                        * (robot.v / max(0.1, robot.v_max))
+                        * ratio
+                        * world.dt
+                    )
+                elif act_enum == RobotAction.SLOW_DOWN and delta_subgoal >= -0.01:
+                    r_elder_safe += self.elder_slow_bonus * world.dt
 
-            # Thưởng thích ứng khi đi chậm an toàn dưới trời mưa hoặc gần vùng sự kiện nguy hiểm
+            # 5c. Phần thưởng Thích ứng Sự kiện Ngẫu nhiên (R_event - Mục 12.2.5):
+            #     +5.0 khi vòng tránh thành công cụm O-Space / sự kiện nguy hiểm mà không va chạm.
             ev = getattr(world, "active_event", None)
-            if (
-                ev is not None
-                and float(ev.get("is_ospace_hazard", 0.0)) > 0.5
-                and math.hypot(robot.x - float(ev["x"]), robot.y - float(ev["y"])) < 2.5
-                and not soc.get("group_splitting", False)
-                and robot.v > 0.1
-            ):
-                r_hri_ext += 0.10
+            if ev is not None:
+                d_ev = math.hypot(robot.x - float(ev["x"]), robot.y - float(ev["y"]))
+                if (
+                    float(ev.get("is_ospace_hazard", 0.0)) > 0.5
+                    and d_ev < 2.2
+                    and not soc.get("group_splitting", False)
+                    and not soc.get("ospace_intrusion", False)
+                    and not getattr(world, "event_bypass_claimed", False)
+                    and delta_goal > 0.01
+                ):
+                    r_event += self.event_bypass_bonus
+                    world.event_bypass_claimed = True
 
+        r_hri_ext = r_fan + r_elder_safe + r_event
         total_reward = (
             r_terminal
             + r_progress
@@ -136,6 +188,9 @@ class RewardCalculator:
             "r_time": round(float(r_time), 3),
             "r_social": round(float(r_social), 3),
             "r_group": round(float(r_group), 2),
+            "r_fan": round(float(r_fan), 3),
+            "r_elder_safe": round(float(r_elder_safe), 3),
+            "r_event": round(float(r_event), 3),
             "r_context": round(float(r_context + r_hri_ext), 3),
         }
         return float(total_reward), breakdown

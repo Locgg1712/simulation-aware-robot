@@ -42,8 +42,12 @@ def classify_all_humans_context(
     n = len(humans)
     for i in range(n):
         hi = humans[i]
+        if hi.x < 0.0 or hi.y < 0.0:
+            continue
         for j in range(i + 1, n):
             hj = humans[j]
+            if hj.x < 0.0 or hj.y < 0.0:
+                continue
             dist_ij = math.hypot(hi.x - hj.x, hi.y - hj.y)
             # Điều kiện INTERACTING: STANDING, d_ij in [0.6m, 2.2m], nhìn về nhau
             if (
@@ -71,6 +75,9 @@ def classify_all_humans_context(
 
     # Bước 2: Đánh giá tương tác trực tiếp với Robot (CROSSING / APPROACHING)
     for h in humans:
+        if h.x < 0.0 or h.y < 0.0:
+            h.social_context = SocialContext.ALONE
+            continue
         if h.id in interacting_ids:
             h.social_context = SocialContext.INTERACTING
             continue

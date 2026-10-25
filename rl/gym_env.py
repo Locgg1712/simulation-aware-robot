@@ -26,7 +26,7 @@ class ContextAwareNavEnv(gym.Env):
     """
     Môi trường chuẩn Gymnasium cho bài toán Context-Aware Robot Navigation
     trong thế giới FarmBot Town (Maps 1-4) & các kịch bản xã hội (Topologies 5-15):
-    - Observation Space: Box(low=-5.0, high=5.0, shape=(106,), dtype=np.float32)
+    - Observation Space: Box(low=-5.0, high=5.0, shape=(128,), dtype=np.float32)
     - Action Space:
         + Discrete(6): FORWARD, TURN_LEFT, TURN_RIGHT, SLOW_DOWN, STOP, WAIT
         + Hoặc Box(2,) nếu bật continuous_actions=True

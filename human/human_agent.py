@@ -77,9 +77,9 @@ class HumanAgent(BaseObject):
 
     def update_activity_from_speed(self):
         """Tự động cập nhật nhãn Activity dựa trên vận tốc thực tế ||v||."""
-        if self.speed < 0.20:
+        if self.speed < 0.08:
             self.activity = HumanActivity.STANDING
-        elif self.speed < 1.65:
+        elif self.speed < 1.45:
             self.activity = HumanActivity.WALKING
         else:
             self.activity = HumanActivity.RUNNING

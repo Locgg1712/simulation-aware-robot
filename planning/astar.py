@@ -44,17 +44,18 @@ class AStarPlanner:
         use_social_cost: bool = False,
         humans: Sequence[HumanAgent] = (),
         groups: Sequence[HumanGroup] = (),
+        goal_pos: tuple[float, float] | None = None,
     ) -> tuple[np.ndarray, np.ndarray]:
         """
         Tạo:
-        - hard_grid: Ma trận vật cản cứng (1 = tường tĩnh).
-        - penalty_grid: Ma trận chi phí phụ trội (gần tường, cửa đang đóng, vùng O-Space).
+        - hard_grid: Ma trận vật cản cứng (1 = tường tĩnh đã inflate bán kính Robot).
+        - penalty_grid: Ma trận chi phí phụ trội (gần tường, cửa đang đóng, NPC tĩnh, vùng O-Space).
         """
         hard_grid = static_grid.copy()
         penalty_grid = np.zeros((self.rows, self.cols), dtype=np.float32)
 
         # 1. Tạo lớp đệm chi phí quanh tường tĩnh (bán kính 1-2 ô lưới = 0.25m - 0.50m)
-        # giúp đường A* luôn nằm giữa hành lang/cửa thay vì sát mép tường
+        # giúp đường A* luôn nằm giữa hành lang/cầu thay vì sát mép nước/tường
         occupied_r, occupied_c = np.where(static_grid == 1)
         for r, c in zip(occupied_r, occupied_c):
             r_min = max(0, r - 2)
@@ -66,9 +67,9 @@ class AStarPlanner:
                     if static_grid[nr, nc] == 0:
                         dist_cells = max(abs(nr - r), abs(nc - c))
                         if dist_cells == 1:
-                            penalty_grid[nr, nc] = max(penalty_grid[nr, nc], 6.0)
+                            penalty_grid[nr, nc] = max(penalty_grid[nr, nc], 6.5)
                         elif dist_cells == 2:
-                            penalty_grid[nr, nc] = max(penalty_grid[nr, nc], 1.8)
+                            penalty_grid[nr, nc] = max(penalty_grid[nr, nc], 2.0)
 
         # 2. Trọng số cho cửa bán tĩnh (Semi-static Doors) đang đóng / đang chuyển trạng thái
         for door in semi_static_objects:
@@ -78,12 +79,31 @@ class AStarPlanner:
                 c_max = min(self.cols - 1, int((rx + rw) / self.grid_res))
                 r_min = max(0, int(ry / self.grid_res))
                 r_max = min(self.rows - 1, int((ry + rh) / self.grid_res))
-                # Cộng chi phí 2.5 mỗi ô cửa đóng: nếu có cửa mở gần đó A* sẽ ưu tiên cửa mở,
-                # nếu chỉ có 1 cửa duy nhất thì A* vẫn lập lộ trình dẫn Robot tới trước cửa.
                 penalty_grid[r_min : r_max + 1, c_min : c_max + 1] += 2.5
 
-        # 3. Nếu bật chế độ Social Cost (dành cho Baseline 2 - A* Social Rules):
-        # Đưa vùng O-Space của nhóm INTERACTING và không gian cá nhân vào penalty_grid
+        # 3. Luôn tránh đâm xuyên qua thân vật lý của các NPC đứng yên trên đường
+        for h in humans:
+            if h.x < 0.0 or h.y < 0.0:
+                continue
+            if goal_pos is not None and math.hypot(h.x - goal_pos[0], h.y - goal_pos[1]) < 0.95:
+                continue
+            if h.speed < 0.08 or use_social_cost:
+                c_h = int(h.x / self.grid_res)
+                r_h = int(h.y / self.grid_res)
+                body_rad = h.radius + 0.38
+                rad_cells = int(math.ceil(body_rad / self.grid_res)) + 1
+                r_min = max(0, r_h - rad_cells)
+                r_max = min(self.rows - 1, r_h + rad_cells)
+                c_min = max(0, c_h - rad_cells)
+                c_max = min(self.cols - 1, c_h + rad_cells)
+                for nr in range(r_min, r_max + 1):
+                    for nc in range(c_min, c_max + 1):
+                        wx, wy = self.grid_to_world(nr, nc)
+                        d_h = math.hypot(wx - h.x, wy - h.y)
+                        if d_h <= body_rad:
+                            penalty_grid[nr, nc] += 45.0
+
+        # 4. Nếu bật chế độ Social Cost: đưa vùng O-Space và elip Gaussian vào penalty_grid
         if use_social_cost:
             for grp in groups:
                 c_center = int(grp.center_x / self.grid_res)
@@ -100,6 +120,8 @@ class AStarPlanner:
                             penalty_grid[nr, nc] += 18.0
 
             for h in humans:
+                if h.x < 0.0 or h.y < 0.0:
+                    continue
                 c_h = int(h.x / self.grid_res)
                 r_h = int(h.y / self.grid_res)
                 rad_cells = 6
@@ -150,6 +172,7 @@ class AStarPlanner:
             use_social_cost=use_social_cost,
             humans=humans,
             groups=groups,
+            goal_pos=goal_pos,
         )
 
         sr, sc = self.world_to_grid(*start_pos)
