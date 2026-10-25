@@ -1,4 +1,4 @@
-# Phase 5: Tính toán chi tiết từng thành phần Reward
+# Phase 5 & Mục 12.2: Tính toán chi tiết từng thành phần Hàm Phần Thưởng Mở Rộng FarmBot Town
 # rl/reward_calculator.py
 import math
 from environment.world import World
@@ -9,8 +9,8 @@ from human.human_agent import SocialContext
 
 class RewardCalculator:
     """
-    Tính toán hàm phần thưởng đa mục tiêu tại mỗi bước thời gian t (Mục 9.3):
-        R_t = R_terminal + R_progress + R_time + R_social + R_group + R_context
+    Tính toán hàm phần thưởng mở rộng đa mục tiêu tại mỗi bước thời gian t (Mục 6.2 & Mục 12.2):
+        R_t^ext = R_terminal + R_progress + R_time + R_social + R_group + R_context + R_fan + R_elder_safe + R_event
     """
 
     def __init__(self, reward_cfg: dict | None = None):
@@ -31,17 +31,19 @@ class RewardCalculator:
     ) -> tuple[float, dict]:
         """
         Trả về:
-        - total_reward (float): Tổng phần thưởng ở bước hiện tại.
+        - total_reward (float): Tổng phần thưởng mở rộng ở bước hiện tại.
         - breakdown (dict): Chi tiết từng hạng mục thưởng/phạt để hiển thị Debug và ghi log.
         """
         robot = world.robot
         if robot is None:
             return 0.0, {}
 
-        # 1. Terminal Reward (Chạm đích +100.0 hoặc Va chạm -100.0)
+        # 1. Terminal Reward (Chạm đích +100.0 hoặc Va chạm -100.0 / Cán tốc độ cao)
         r_terminal = 0.0
         if world.is_collision:
             r_terminal = self.collision_penalty
+            if getattr(world, "safety_hearts", 3) <= 0:
+                r_terminal -= 50.0
         elif world.is_goal_reached:
             r_terminal = self.goal_reward
 
@@ -63,7 +65,7 @@ class RewardCalculator:
 
         r_progress = self.progress_weight * effective_progress + heading_bonus
 
-        # 3. Time Penalty (-0.05 mỗi bước dt) + phạt nhẹ nếu đứng yên vô cớ (tránh kẹt local optimum đứng im)
+        # 3. Time Penalty (-0.05 mỗi bước dt) + phạt nhẹ nếu đứng yên vô cớ
         r_time = self.time_penalty
         has_wait_ctx = self._has_valid_wait_context(world)
         if robot.v < 0.02 and not has_wait_ctx and not world.is_goal_reached:
@@ -72,26 +74,59 @@ class RewardCalculator:
         # 4. Social Space Penalty & Group Splitting Penalty
         r_social = 0.0
         r_group = 0.0
+        r_context = 0.0
+        r_hri_ext = 0.0
+
         if self.use_social_reward:
             soc = world.social_status
             r_social = float(soc.get("social_penalty", 0.0))
             r_group = float(soc.get("group_penalty", 0.0))
 
-        # 5. Context Behavior Reward (Smart Wait Bonus)
-        # Khuyến khích chọn WAIT hoặc SLOW_DOWN khi có người đang CROSSING hoặc cửa đang OPENING trước mặt
-        r_context = 0.0
-        if self.use_social_reward and action is not None:
-            try:
-                act_enum = RobotAction(int(action))
-            except ValueError:
-                act_enum = None
+            act_enum = None
+            if action is not None:
+                try:
+                    act_enum = RobotAction(int(action))
+                except ValueError:
+                    act_enum = None
 
             if act_enum in (RobotAction.WAIT, RobotAction.SLOW_DOWN, RobotAction.STOP):
                 if has_wait_ctx:
                     r_context = self.smart_wait_bonus
 
+            # 5. Thành phần mở rộng FarmBot Town: Vùng Quạt HRI, Radar Độ Tuổi & Sự Kiện Động
+            hri = getattr(world, "hri_status", {})
+            if hri.get("rear_approach", False):
+                r_hri_ext -= 0.65
+            elif (
+                hri.get("d_npc", 5.0) <= 1.85
+                and abs(hri.get("delta_alpha_npc", math.pi)) <= math.radians(35.0)
+                and robot.v <= 0.55
+            ):
+                r_hri_ext += 0.12 * math.cos(hri.get("delta_alpha_npc", 0.0))
+
+            r_hri_ext += float(hri.get("elder_speed_violation", 0.0)) * 0.35
+            if hri.get("elder_smart_yield", False):
+                r_hri_ext += 0.30
+
+            # Thưởng thích ứng khi đi chậm an toàn dưới trời mưa hoặc gần vùng sự kiện nguy hiểm
+            ev = getattr(world, "active_event", None)
+            if (
+                ev is not None
+                and float(ev.get("is_ospace_hazard", 0.0)) > 0.5
+                and math.hypot(robot.x - float(ev["x"]), robot.y - float(ev["y"])) < 2.5
+                and not soc.get("group_splitting", False)
+                and robot.v > 0.1
+            ):
+                r_hri_ext += 0.10
+
         total_reward = (
-            r_terminal + r_progress + r_time + r_social + r_group + r_context
+            r_terminal
+            + r_progress
+            + r_time
+            + r_social
+            + r_group
+            + r_context
+            + r_hri_ext
         )
 
         breakdown = {
@@ -101,7 +136,7 @@ class RewardCalculator:
             "r_time": round(float(r_time), 3),
             "r_social": round(float(r_social), 3),
             "r_group": round(float(r_group), 2),
-            "r_context": round(float(r_context), 2),
+            "r_context": round(float(r_context + r_hri_ext), 3),
         }
         return float(total_reward), breakdown
 
@@ -111,6 +146,7 @@ class RewardCalculator:
         Kiểm tra xem phía trước mặt Robot có thực sự tồn tại tình huống cần nhường đường / chờ đợi:
         1. Cửa bán tĩnh đang ở trạng thái OPENING hoặc CLOSED trong bán kính 2.2m phía trước.
         2. Con người mang ngữ cảnh CROSSING hoặc APPROACHING trong bán kính 3.8m phía trước.
+        3. Đang ở trong bán kính an toàn của người cao tuổi / trẻ nhỏ (elder / child).
         """
         robot = world.robot
         if robot is None:
@@ -125,8 +161,12 @@ class RewardCalculator:
                     return True
 
         for h in world.local_perception.get("humans", []):
+            dist = math.hypot(h.x - robot.x, h.y - robot.y)
+            if getattr(h, "age_group", "adult") in ("elder", "child") and dist <= getattr(
+                h, "safety_radius", 1.65
+            ):
+                return True
             if h.social_context in (SocialContext.CROSSING, SocialContext.APPROACHING):
-                dist = math.hypot(h.x - robot.x, h.y - robot.y)
                 ang = math.atan2(h.y - robot.y, h.x - robot.x) - robot.theta
                 ang = math.atan2(math.sin(ang), math.cos(ang))
                 if dist < 3.8 and abs(ang) < math.radians(65.0):

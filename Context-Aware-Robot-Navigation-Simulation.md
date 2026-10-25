@@ -133,61 +133,68 @@ flowchart TD
 
 ---
 
-## 6. Thiết kế Môi trường Reinforcement Learning (Gymnasium)
+## 6. Thiết kế Môi trường Reinforcement Learning (Gymnasium 128-Dim Unified FarmBot Town)
 
-### 6.1. Vector Trạng thái 106 Chiều Cơ sở ($\mathbf{S}_t \in \mathbb{R}^{106}$)
-Toàn bộ tọa độ và vận tốc đều được chuyển về **Hệ quy chiếu gắn với Robot (Robot-Centric Frame)** nhằm đảm bảo tính bất biến tịnh tiến và quay:
+### 6.1. Vector Trạng thái 128 Chiều Thống nhất ($\mathbf{S}_t^{\text{ext}} \in \mathbb{R}^{128}$)
+Toàn bộ tọa độ và vận tốc đều được chuyển về **Hệ quy chiếu gắn với Robot (Robot-Centric Frame)** nhằm đảm bảo tính bất biến tịnh tiến và quay, tích hợp trực tiếp cả cảm biến vật lý lẫn ngữ cảnh xã hội – nông trại – sự kiện của **FarmBot Town**:
 
 * **Khối 1 – Trạng thái Robot & Sub-goal ($6$ chiều):**
-  $$\left[ \frac{v_t}{v_{\text{max}}}, \frac{\omega_t}{\omega_{\text{max}}}, \frac{d_{\text{goal}}}{D_{\text{norm}}}, \sin(\Delta\theta_{\text{sub}}), \cos(\Delta\theta_{\text{sub}}), \frac{d_{\text{sub}}}{D_{\text{sub\_norm}}} \right]$$
+  $$\left[ \frac{d_{\text{sub}}}{D_{\text{max}}}, \sin(\Delta\theta_{\text{sub}}), \cos(\Delta\theta_{\text{sub}}), \frac{d_{\text{goal}}}{D_{\text{max}}}, \frac{v_t}{v_{\text{max}}}, \frac{\omega_t}{\omega_{\text{max}}} \right]$$
   Trong đó $\Delta\theta_{\text{sub}} = \text{atan2}(y_{\text{sub}} - y_r, x_{\text{sub}} - x_r) - \theta_r$ là góc lệch hướng tới Sub-goal.
 * **Khối 2 – Cảm biến LiDAR 360° ($16$ chiều):**
   Khoảng cách chuẩn hóa từ 16 tia Raycast cách đều $22.5^\circ$ trong bán kính quan sát $R_{\text{sensor}} = 6.0\text{ m}$:
   $$s_{\text{lidar}, i} = \frac{\min(\text{ray\_hit}_i, R_{\text{sensor}})}{R_{\text{sensor}}} \in [0, 1], \quad i = 1..16$$
 * **Khối 3 – Top-$K$ Vật thể Bán tĩnh / Động gần nhất ($K = 3 \times 8 = 24$ chiều):**
-  Mỗi vật thể được biểu diễn bởi vector 8 chiều:
-  $$[x_{\text{rel}}, y_{\text{rel}}, v_{x,\text{rel}}, v_{y,\text{rel}}, r_{\text{obj}}, \text{is\_semi}, \text{passable}, t_{\text{change}}]$$
-  (Nếu môi trường có ít hơn 3 vật thể, áp dụng đệm Zero-Padding).
-* **Khối 4 – Top-$M$ Con người gần nhất ($M = 5 \times 12 = 60$ chiều):**
-  Mỗi con người được biểu diễn bởi vector 12 chiều:
-  $$[x_{\text{rel}}, y_{\text{rel}}, v_{x,\text{rel}}, v_{y,\text{rel}}, \sin(\theta_{\text{rel}}), \cos(\theta_{\text{rel}}), v_h, r_{\text{human}}, \text{in\_group}, \text{one\_hot}_{\text{context}}(4)]$$
-  Với $\text{one\_hot}_{\text{context}}$ mã hóa 4 trạng thái: `ALONE`, `APPROACHING`, `CROSSING`, `INTERACTING`.
+  Bao gồm Xe kéo nông sản `FarmCartAGV`, Thú nuôi `FarmAnimal` và Cổng rào bán tĩnh FSM:
+  $$[x_{\text{rel}}, y_{\text{rel}}, v_{x,\text{rel}}, v_{y,\text{rel}}, r_{\text{obj}}, \text{is\_semi}, \text{is\_dyn}, \text{passable}]$$
+* **Khối 4 – Top-$M$ Con người / NPC Cư dân gần nhất ($M = 5 \times 12 = 60$ chiều):**
+  Đồng bộ trực tiếp từ lộ trình tuần tra của `VillagerNPC` và lịch trình theo giờ `game/schedules.py`:
+  $$[x_{\text{rel}}, y_{\text{rel}}, v_{x,\text{rel}}, v_{y,\text{rel}}, \sin(\theta_{\text{rel}}), \cos(\theta_{\text{rel}}), \text{one\_hot}_{\text{activity}}(3), \text{one\_hot}_{\text{context}}(3)]$$
+* **Khối 5 – Trạng thái Vùng Quạt Tương tác HRI với NPC Mục tiêu / Gần nhất ($4$ chiều):**
+  $$[d_{\text{npc}}/5.0, \Delta\alpha_{\text{npc}}/\pi, \Delta\alpha_{\text{robot}}/\pi, \text{in\_fan\_ok}]$$
+* **Khối 6 – Nhóm Tuổi & Bán kính Radar An toàn của NPC Gần nhất ($4$ chiều):**
+  $$[\text{is\_adult}, \text{is\_elder}, \text{is\_child}, R_{\text{safe}}/2.0]$$
+* **Khối 7 – Trạng thái Khay đồ, Đồng hồ Ngày-Đêm, Thời tiết Mưa/Đêm, Mùa & Trái Tim An Toàn ($6$ chiều):**
+  $$[\text{inv\_ratio}, \text{has\_quest\_item}, \text{clock\_norm}, \text{is\_rain\_or\_night}, \text{season\_idx\_norm}, \text{safety\_hearts\_norm}]$$
+* **Khối 8 – Vector Sự kiện Ngẫu nhiên Động CMDP từ `game/random_events.py` ($8$ chiều):**
+  $$[\text{event\_active}, \text{event\_type\_id\_norm}, \Delta x_{\text{event}}/20.0, \Delta y_{\text{event}}/20.0, d_{\text{event}}/20.0, \text{event\_time\_left\_norm}, \text{event\_reward\_norm}, \text{is\_ospace\_hazard}]$$
 
-### 6.2. Hàm Phần thưởng Đa mục tiêu Cơ sở (Multi-Objective Base Reward)
-$$R_t^{\text{base}} = R_{\text{goal}} + R_{\text{collision}} + R_{\text{progress}} + R_{\text{time}} + R_{\text{social}} + R_{\text{group}} + R_{\text{context}}$$
+### 6.2. Hàm Phần thưởng Đa mục tiêu Mở rộng (Multi-Objective FarmBot Town Reward)
+$$R_t^{\text{ext}} = R_{\text{goal}} + R_{\text{collision}} + R_{\text{progress}} + R_{\text{time}} + R_{\text{social}} + R_{\text{group}} + R_{\text{context}} + R_{\text{fan}} + R_{\text{elder\_safe}} + R_{\text{event}}$$
 
 * **Phần thưởng Đích ($R_{\text{goal}}$):** $+100.0$ khi Robot chạm vòng đích ($d < R_{\text{robot}} + R_{\text{goal}}$).
-* **Hình phạt Va chạm ($R_{\text{collision}}$):** $-100.0$ khi xảy ra va chạm vật lý với bất kỳ vật cản hay con người nào (Episode kết thúc ngay).
-* **Thưởng Tiến triển Mục tiêu ($R_{\text{progress}}$):** $2.5 \cdot (d_{t-1}^{\text{sub}} - d_t^{\text{sub}})$ khuyến khích Robot thu hẹp cự ly tới Sub-goal.
-* **Chi phí Thời gian ($R_{\text{time}}$):** $-0.05$ cho mỗi bước thời gian $\Delta t$ để thúc đẩy tối ưu hành trình.
-* **Phạt Vi phạm Vùng Cá nhân ($R_{\text{social}}$):** Phạt trơn từ $-0.5$ đến $-2.0$ tỉ lệ thuận với giá trị hàm $C_{\text{social}}$ khi Robot tiến sâu vào không gian riêng tư của con người.
-* **Phạt Cắt ngang Nhóm ($R_{\text{group}}$):** $-5.0$ cho mỗi bước thời gian nếu Robot đi xuyên qua vùng đĩa O-Space của nhóm đang trò chuyện.
-* **Thưởng Nhận thức Ngữ cảnh Thông minh ($R_{\text{context}}$):** $+0.2$ (`Smart Wait Bonus`) khi Robot chủ động thực hiện hành động `WAIT` hoặc `SLOW_DOWN` khi có người đang `CROSSING` trong bán kính $2.0\text{ m}$ phía trước hoặc khi đang chờ cửa bán tĩnh `OPENING`.
+* **Hình phạt Va chạm ($R_{\text{collision}}$):** $-100.0$ khi xảy ra va chạm vật lý (hoặc $-150.0$ nếu cán tốc độ cao làm mất hết Trái Tim An Toàn).
+* **Thưởng Tiến triển & Bám hướng Sub-goal ($R_{\text{progress}}$):** $3.5 \cdot (0.65 \Delta d_{\text{sub}} + 0.35 \Delta d_{\text{goal}}) + R_{\text{heading}}$ khuyến khích Robot bám sát lộ trình A* tới đích.
+* **Chi phí Thời gian & Chống Đứng Yên Vô Cớ ($R_{\text{time}}$):** $-0.05$ mỗi bước $\Delta t$ (kèm phạt $-0.08$ nếu đứng im $v < 0.02\text{ m/s}$ khi không có tình huống cần nhường đường).
+* **Phạt Vi phạm Vùng Cá nhân ($R_{\text{social}}$) & Phạt Cắt ngang Nhóm O-Space ($R_{\text{group}}$):** Phạt trơn theo hàm Gaussian cá nhân và phạt $-5.0$ khi đi xuyên qua tâm nhóm đang trò chuyện.
+* **Thưởng Nhận thức Ngữ cảnh, Vùng Quạt HRI & Radar Độ Tuổi ($R_{\text{context}} + R_{\text{fan}} + R_{\text{elder\_safe}} + R_{\text{event}}$):** Thưởng khi chủ động giảm tốc/chờ đợi trước người `CROSSING`, đi chậm trong vùng Radar $1.65\text{ m}$ của người già (`elder`) / trẻ nhỏ (`child`), tiếp cận từ phía trước mặt NPC và vòng tránh vùng sự kiện `is_ospace_hazard`.
 
 ---
 
-## 7. Danh mục 15 Topology Bản đồ & Tập Đánh giá (15 Topologies & Benchmarks)
+## 7. Danh mục 15 Topology Bản đồ (4 Bản đồ Game FarmBot Town + 11 Kịch bản Xã hội)
 
-### 7.1. Phân chia 15 Topology (Train / Validation / Unseen Test)
-15 Topology bản đồ được chia thành 3 tập dữ liệu khép kín để đánh giá năng lực tổng quát hóa (Generalization):
+### 7.1. Phân chia 15 Topology (`Game` / `Train` / `Validation` / `Unseen Test`)
+Hệ thống kết hợp trực tiếp **4 Bản đồ Ngoài trời của FarmBot Town (`Topologies 1–4`, chạy `HeadlessGameSession` đồng bộ thực thể từ `game/`)** với **11 Kịch bản Xã hội Chuẩn hóa (`Topologies 5–15`)**:
 
-* **Tập Huấn luyện (Topologies 1 – 9):**
-  1. `Open Area` (Quảng trường rộng mở không vật cản tĩnh).
-  2. `Straight Corridor` (Hành lang thẳng hẹp có dòng người đi ngược chiều).
-  3. `Narrow Passage` (Nút cổ chai hẹp $1.2\text{ m}$ thử thách năng lực nhường đường).
-  4. `L-Corner` (Góc cua vuông $90^\circ$ hạn chế góc nhìn).
+* **Tập Bản đồ Game Chính thức (`GAME_TOPOLOGIES = [1, 2, 3, 4]`, thuộc `TRAIN_TOPOLOGIES 1–9`):**
+  1. `Game Map 1: Pelican Town Square & 2 Bridges` (Quảng trường Thị trấn, dòng sông phía Đông với Cầu Đá & Cầu Gỗ, 4 tòa nhà lớn và 6 NPC tuần tra theo lịch trình `game/schedules.py`).
+  2. `Game Map 2: Orchard Farm & 6 Crop Fields` (Đại Nông Trại, 6 thửa ruộng có hàng rào, vườn cây ăn quả, chuồng gia súc, xe kéo `FarmCartAGV` và 5 nông dân).
+  3. `Game Map 3: Lakeside Island & 3 Docks` (Đảo Rừng Xanh, hồ nước lớn chia cắt với 3 cây cầu gỗ hẹp và 4 điểm câu cá).
+  4. `Game Map 4: Residential Village & Robot Workshop` (Khu Dân Cư 4 dinh thự + Xưởng Robot Số 5 và các tuyến đi bộ của cư dân).
+
+* **Tập Kịch bản Giao thông & Xã hội Bổ trợ (`Topologies 5 – 9`, thuộc `TRAIN_TOPOLOGIES`):**
   5. `T-Junction` (Ngã ba có các luồng người cắt ngang từ hai hướng).
   6. `Cross Intersection` (Ngã tư đông đúc có các luồng giao thông đan xen).
   7. `Single Door Room` (Phòng có một cửa tự động FSM đóng/mở chu kỳ).
   8. `Two-Room Connected` (Hai phòng nối nhau qua hành lang trung gian).
   9. `Pillar Hall` (Đại sảnh có hệ thống các cột trụ tròn phân bố đều).
 
-* **Tập Kiểm định (Topologies 10 – 12):**
+* **Tập Kiểm định (`VAL_TOPOLOGIES = [10, 11, 12]`):**
   10. `Double Bottleneck` (Hai nút thắt cổ chai liên tiếp).
   11. `Three-Room Office` (Không gian văn phòng 3 phòng liên thông có cửa tự động).
   12. `Courtyard Dynamic Lanes` (Sân trong với các làn xe đẩy AGV di chuyển liên tục).
 
-* **Tập Kiểm thử Chưa Từng Gặp (Unseen Topologies 13 – 15):**
+* **Tập Kiểm thử Chưa Từng Gặp (`TEST_TOPOLOGIES = [13, 14, 15]`):**
   13. `H-Shaped Complex` (Tổ hợp chữ H kết hợp hai hành lang và nút thắt).
   14. `Multi-Room Maze` (Mê cung nhiều phòng thử thách lập kế hoạch đường dài).
   15. `Crowded Plaza & Gates` (Quảng trường đông đúc tích hợp nhiều nhóm đàm thoại O-Space và cổng barrier).
@@ -195,59 +202,58 @@ $$R_t^{\text{base}} = R_{\text{goal}} + R_{\text{collision}} + R_{\text{progress
 ### 7.2. Bốn Phương pháp Đánh giá So sánh (4 Baselines)
 1. **Baseline 1 (`A* + Basic Collision Avoidance`):** Lập kế hoạch đường A* trên bản đồ tĩnh, phanh dừng khi vật cản xuất hiện trong bán kính an toàn, hoàn toàn không nhận thức ngữ cảnh xã hội.
 2. **Baseline 2 (`A* + Social Rules`):** Kết hợp A* với Social Costmap mở rộng và hệ thống luật cứng nhường đường khi phát hiện người `CROSSING` hoặc cửa đóng.
-3. **Baseline 3 (`RL No-Context`):** Huấn luyện mô hình PPO/DQN chỉ sử dụng 6 chiều Robot + 16 tia LiDAR, ẩn toàn bộ thông tin ngữ cảnh xã hội, trạng thái cửa và nhóm O-Space.
-4. **Baseline 4 (`Context-Aware RL - Proposed`):** Huấn luyện PPO/DQN với đầy đủ vector trạng thái $106$ chiều (hoặc $128$ chiều mở rộng) và hàm thưởng ngữ cảnh đa mục tiêu.
+3. **Baseline 3 (`RL No-Context`):** Huấn luyện mô hình PPO/DQN với vector 128 chiều nhưng ẩn toàn bộ thông tin ngữ cảnh xã hội, độ tuổi, vùng quạt HRI và sự kiện (`include_social_context=False`).
+4. **Baseline 4 (`Context-Aware RL - Proposed`):** Huấn luyện PPO/DQN (khởi động ấm bằng Behavioral Cloning từ chuyên gia + tinh chỉnh RL đa luồng) với đầy đủ vector trạng thái $128$ chiều và hàm thưởng ngữ cảnh mở rộng của FarmBot Town.
 
 ---
 
-## 8. Kiến trúc Thư mục Dự án Chuẩn
+## 8. Kiến trúc Thư mục Dự án Chuẩn (Đã Tinh Gọn & Tối Ưu Hóa Cho Game + Kaggle)
 
-Cấu trúc mã nguồn toàn diện của dự án bao gồm cả nhánh mô phỏng học thuật cốt lõi và nhánh môi trường mở rộng **FarmBot Town**:
+Cấu trúc mã nguồn thống nhất giữa trò chơi **FarmBot Town (`game/`)** và hệ thống huấn luyện **Deep RL Headless (`rl/`, `environment/`, `kaggle_train.py`)**:
 
 ```text
-context_aware_robot/
-├── README.md                                    # Hướng dẫn tổng quan dự án
+simulation_aware_robot/
+├── README.md                                    # Hướng dẫn khởi chạy Game & Huấn luyện RL trên Kaggle
 ├── requirements.txt                             # Danh mục thư viện phụ thuộc (Pygame-ce, Gymnasium, SB3)
-├── Context-Aware-Robot-Navigation-Simulation.md # Tài liệu Đặc tả Kỹ thuật & RL Specification
-├── Context_game_farmbot.md                     # Tài liệu Đặc tả Thiết kế FarmBot Town RPG
-├── main.py                                      # Điểm khởi chạy Simulator nghiên cứu khoa học
-├── stardew_game.py                              # Điểm khởi chạy Môi trường FarmBot Town
+├── Context-Aware-Robot-Navigation-Simulation.md # Tài liệu Đặc tả Kỹ thuật & RL 128-Dim Specification
+├── Context_game_farmbot.md                      # Tài liệu Đặc tả Thiết kế FarmBot Town RPG
+├── main.py                                      # Điểm khởi chạy chính (Mở Game hoặc kiểm tra --check-env)
+├── kaggle_train.py                              # Pipeline đóng gói Dataset & Huấn luyện tự động trên Kaggle
 │
 ├── configs/                                     # Cấu hình tham số hệ thống
 │   ├── default_config.yaml                      # Tham số vật lý, bản đồ 20m, cảm biến LiDAR
 │   └── rl_hyperparams.yaml                      # Siêu tham số huấn luyện DQN/PPO, trọng số Reward
 │
-├── environment/                                 # Môi trường mô phỏng 20m x 20m
+├── environment/                                 # Môi trường mô phỏng 20m x 20m tích hợp HeadlessGameSession
 │   ├── __init__.py
-│   ├── world.py                                 # Quản lý vòng lặp vật lý thời gian thực & Occupancy Grid
-│   ├── topology.py                              # Định nghĩa 15 Topology Templates
-│   ├── map_generator.py                         # Thủ tục sinh bản đồ ngẫu nhiên (Procedural Generation)
-│   ├── spawn_manager.py                         # Phân bổ vị trí Robot, Goal, Vật thể & Con người
-│   └── physics.py                               # Động học vi sai, kiểm tra va chạm, LiDAR Raycast
+│   ├── world.py                                 # Quản lý vật lý, đồng bộ NPC/Schedules/AGV/Events từ game/
+│   ├── topology.py                              # Định nghĩa 15 Topology (Maps 1-4 Game + Topologies 5-15)
+│   ├── map_generator.py                         # Sinh bản đồ 4 Map Stardew Valley & 11 kịch bản xã hội
+│   ├── spawn_manager.py                         # Phân bổ vị trí Robot, Goal, Vật thể & Con người (theo nhóm tuổi)
+│   └── physics.py                               # Động học vi sai, kiểm tra va chạm, LiDAR Raycast 16 tia
 │
 ├── objects/                                     # Thực thể vật thể trong môi trường
 │   ├── __init__.py
 │   ├── base_object.py                           # Lớp cơ sở trừu tượng (id, vị trí, bán kính, loại)
-│   ├── static_object.py                         # Tường, cột, chướng ngại vật cố định
-│   ├── semi_static_object.py                    # Cửa trượt tự động FSM, thanh chắn barrier
-│   ├── dynamic_object.py                        # Xe đẩy AGV chuyển động & dự đoán quỹ đạo
+│   ├── static_object.py                         # Tường, sông hồ, nhà cửa, chướng ngại vật cố định
+│   ├── semi_static_object.py                    # Cửa trượt tự động FSM, cổng rào nông trại
+│   ├── dynamic_object.py                        # Xe đẩy AGV, thú nuôi chuyển động & dự đoán quỹ đạo
 │   └── robot.py                                 # Lớp trạng thái và động học của Robot tự hành
 │
-├── human/                                       # Hệ thống mô hình hóa hành vi con người
+├── human/                                       # Hệ thống mô hình hóa hành vi con người & độ tuổi
 │   ├── __init__.py
-│   ├── human_agent.py                           # Lớp con người (Physical, Activity & Social Context)
+│   ├── human_agent.py                           # Lớp con người (Physical, Activity, Social Context, Age Radar)
 │   ├── motion_model.py                          # Chuyển động Waypoint + Lực đẩy xã hội (Social Force)
 │   ├── groups.py                                # Quản lý nhóm di chuyển chung và nhóm đứng O-Space
 │   └── social_space.py                          # Tính toán hàm phân bố Gaussian cá nhân bất đối xứng
 │
 ├── perception/                                  # Tầng tri giác và cảm biến
 │   ├── __init__.py
-│   ├── ground_truth.py                          # Trích xuất đối tượng trong tầm quan sát & LiDAR
-│   └── trajectory_predictor.py                  # Dự đoán quỹ đạo chuyển động ngắn hạn (1.0 - 3.0s)
+│   └── ground_truth.py                          # Trích xuất đối tượng trong tầm quan sát cảm biến
 │
 ├── planning/                                    # Tầng lập kế hoạch đường đi
 │   ├── __init__.py
-│   ├── astar.py                                 # Tìm đường toàn cục A* trên Occupancy Grid
+│   ├── astar.py                                 # Tìm đường toàn cục A* kết hợp Social Costmap
 │   └── subgoal_selector.py                      # Trích xuất Sub-goal trượt dọc lộ trình A*
 │
 ├── behavior/                                    # Mô hình hóa hành vi & Baseline Agents
@@ -257,39 +263,40 @@ context_aware_robot/
 │
 ├── rl/                                          # Tầng Học tăng cường sâu (Deep Reinforcement Learning)
 │   ├── __init__.py
-│   ├── gym_env.py                               # Lớp môi trường chuẩn Gymnasium (reset, step, render)
-│   ├── state_builder.py                         # Bộ trích xuất Vector trạng thái 106 chiều / 128 chiều
-│   ├── reward_calculator.py                     # Bộ tính toán hàm phần thưởng đa mục tiêu
-│   └── train_eval.py                            # Huấn luyện mô hình PPO/DQN với Stable-Baselines3
+│   ├── gym_env.py                               # Lớp môi trường chuẩn Gymnasium 128 chiều (Headless)
+│   ├── state_builder.py                         # Bộ trích xuất Vector trạng thái mở rộng 128 chiều
+│   ├── reward_calculator.py                     # Bộ tính toán hàm phần thưởng mở rộng FarmBot Town
+│   └── train_eval.py                            # Huấn luyện đa luồng SubprocVecEnv + BC Warm-start (PPO/DQN)
 │
 ├── evaluation/                                  # Tầng đánh giá hiệu năng & Benchmark
 │   ├── __init__.py
 │   ├── metrics.py                               # Đo đạc Navigation, Safety, Social, Generalization metrics
-│   └── benchmark_runner.py                      # Tự động hóa đánh giá 4 Baselines trên 15 Topology
+│   └── benchmark_runner.py                      # Tự động hóa đánh giá 4 Baselines trên tập Game / Val / Test
 │
-├── visualization/                               # Giao diện hiển thị trực quan
+├── visualization/                               # Xuất biểu đồ báo cáo khoa học
 │   ├── __init__.py
-│   ├── pygame_renderer.py                       # Bộ vẽ Scientific 2D & Debug HUD (LiDAR, O-Space, Vector)
-│   ├── stardew_sprites.py                       # Bộ nạp và quản lý đồ họa Pixel-Art Stardew
-│   └── plot_results.py                          # Vẽ biểu đồ Learning Curve và bảng đối sánh kết quả
+│   └── plot_results.py                          # Vẽ biểu đồ Learning Curve và biểu đồ đối sánh Benchmark
 │
-├── game/                                        # Gói Môi trường Mở rộng FarmBot Town (21 mô-đun)
+├── game/                                        # Trò chơi chính thức FarmBot Town & Headless Game Engine
 │   ├── __init__.py
+│   ├── __main__.py                              # Khởi chạy trực tiếp qua `python -m game`
 │   ├── app.py                                   # Vòng lặp chính Pygame-ce & Điều phối hệ thống
 │   ├── atmosphere.py                            # Chu kỳ Ngày/Đêm, Hệ thống Chiếu sáng & Thời tiết mưa tuyết
 │   ├── audio.py                                 # Quản lý hiệu ứng âm thanh Procedural & Âm nhạc Chiptune
-│   ├── autopilot.py                             # Bộ điều hướng tự động A* & Lập kế hoạch lộ trình trong game
+│   ├── autopilot.py                             # Bộ điều hướng tự động [P] tích hợp trực tiếp model RL
 │   ├── constants.py                             # Hằng số vật lý, quy đổi Mét/Pixel, tham số vùng quạt HRI
 │   ├── dialogue.py                              # Hệ thống hội thoại phân nhánh & Mức độ Thân thiện (Hearts)
-│   ├── entities.py                              # Thực thể Robot, 12 Cư dân NPC & Động vật nông trại
+│   ├── entities.py                              # Thực thể Robot, 12 Cư dân NPC, Xe kéo AGV & Động vật
+│   ├── farming.py                               # Hệ thống canh tác nông trại mở rộng
 │   ├── game_state.py                            # Quản lý túi đồ (Inventory), Rơi đồ Knockdown, Điểm số
 │   ├── journal_ui.py                            # Giao diện Nhật ký nhiệm vụ, Bản đồ thị trấn & Danh bạ NPC
 │   ├── maps.py                                  # Thiết kế 5 bản đồ liên thông & Điểm dịch chuyển (Warps)
 │   ├── quests.py                                # Hệ thống nhiệm vụ cốt truyện, Giao hàng nhanh & Đơn SOS
 │   ├── random_events.py                         # Quản lý 7 sự kiện ngẫu nhiên động (Non-stationary CMDP)
+│   ├── rl_bridge.py                             # Cầu nối `HeadlessGameSession` & `GameRLNavigator` 128 chiều
 │   ├── safety_hri.py                            # Hệ thống An toàn 4 Cấp độ & Vùng Quạt Xanh Lá HRI
 │   ├── schedules.py                             # Lịch trình sinh hoạt thời gian thực 24h của 12 NPC
-│   ├── sprite_vault.py                          # Bộ nhớ đệm quản lý và tiền xử lý Sprite Pixel-Art
+│   ├── sprite_vault.py                          # Bộ nạp Sprite Pixel-Art (hỗ trợ Headless Fallback Sizes)
 │   ├── stardew_systems.py                       # Cơ chế Xới đất, Tưới nước, Trồng trọt & Mini-game Câu cá
 │   ├── terrain.py                               # Hệ thống Auto-Tiling địa hình tự nhiên (47-tile bitmask)
 │   ├── ui_renderer.py                           # Vẽ HUD thanh trạng thái, Đồng hồ, Radar & Khay đồ
@@ -312,27 +319,22 @@ context_aware_robot/
 
 ---
 
-## 9. Lộ trình Triển khai 7 Phases & Phím tắt Điều khiển
+## 9. Quy trình Huấn luyện RL trên Kaggle & Điều khiển Trò chơi
 
-### 9.1. Lộ trình 7 Phases
-* **Phase 1:** Simulator cơ bản, Vật lý 2D vi phân liên tục, Cảm biến LiDAR Raycast 16 tia & Giao diện Pygame.
-* **Phase 2:** Đối tượng Bán tĩnh (FSM Cửa trượt), Đối tượng Động (AGV), Dự đoán quỹ đạo & Sinh 15 Topology.
-* **Phase 3:** Mô hình Con người, Nhóm tương tác (O-Space), Không gian Xã hội Gaussian & Phân loại ngữ cảnh.
-* **Phase 4:** Tìm đường toàn cục A*, Bộ chọn Sub-goal trượt & Hiện thực hóa 2 Rule-based Baselines.
-* **Phase 5:** Đóng gói môi trường chuẩn Gymnasium (`ContextAwareNavEnv`), Xây dựng Vector State 106 chiều & Hàm Reward đa mục tiêu.
-* **Phase 6:** Huấn luyện mô hình Deep RL (PPO / DQN) cho 2 chế độ `Full-Context` và `No-Context`.
-* **Phase 7:** Đánh giá Benchmark tự động trên tập Validation & Unseen Test, xuất bảng Metrics và biểu đồ phân tích.
+### 9.1. Quy trình Huấn luyện Đa luồng trên Kaggle (`kaggle_train.py`)
+1. **Đóng gói Dataset gọn nhẹ (~156 KB):** Chạy `python kaggle_train.py --pack-dataset` để nén toàn bộ mã nguồn RL + logic thực của `game/` (`maps.py`, `entities.py`, `schedules.py`, `random_events.py`, `data/*.json` ở chế độ Headless, không cần kèm thư mục ảnh `sprites/`) thành `farmbot_rl_kaggle_dataset.zip`.
+2. **Huấn luyện trên Kaggle Notebook:** Chạy `!python /kaggle/input/farmbot-rl-dataset/kaggle_train.py --timesteps 500000 --n-envs 4` để tự động khởi động ấm (Behavioral Cloning), huấn luyện đa luồng `SubprocVecEnv`, chấm điểm Benchmark trên cả 3 tập (`game`, `val`, `test`), vẽ biểu đồ và xuất gói `farmbot_trained_rl_bundle.zip`.
+3. **Tích hợp vào Game:** Giải nén `farmbot_trained_rl_bundle.zip` vào thư mục gốc dự án, chạy `python main.py` (hoặc `python -m game`) và bấm phím `[P]` để Robot tự hành bằng mô hình RL 128 chiều.
 
-### 9.2. Bảng Phím tắt trong Simulator
+### 9.2. Bảng Phím tắt Chính trong Trò chơi `FarmBot Town`
 | Phím tắt | Chức năng | Chi tiết hiển thị / Tác dụng trong hệ thống |
 | :---: | :--- | :--- |
-| `W / A / S / D / X` | Điều khiển Thủ công (Manual) | Điều khiển Robot tiến, rẽ trái/phải, phanh dừng hoặc kích hoạt chế độ đi chậm (khi ở Mode 1). |
-| `1` – `4` | Chuyển đổi Chế độ Agent | `1`: Manual \| `2`: Baseline 1 (A* Basic) \| `3`: Baseline 2 (A* Social Rules) \| `4`: RL Policy. |
-| `T` | Next Topology | Chuyển tuần tự qua 15 Topology Templates (từ 1 đến 15). |
-| `R` | Reset Episode | Sinh ngẫu nhiên lại kịch bản mới trên Topology hiện tại (tọa độ xuất phát, đích, con người). |
-| `D` | Toggle Debug Mode | Bật/tắt hiển thị tia LiDAR, lộ trình A*, Sub-goal trượt, elip Gaussian và vòng tròn O-Space. |
-| `V` | Toggle Visual Theme | Chuyển đổi giữa phong cách đồ họa Pixel-Art Stardew Valley và phong cách Khoa học 2D tối giản. |
-| `SPACE` | Pause / Resume | Tạm dừng hoặc tiếp tục vòng lặp thời gian thực của mô phỏng. |
+| `W / A / S / D` | Điều khiển Thủ công | Điều khiển Robot di chuyển 8 hướng trên bản đồ thị trấn và trong nhà. |
+| `Shift / X` | Chế độ Đi Chậm An Toàn | Giảm vận tốc xuống $0.30\text{ m/s}$ khi đi qua vùng Radar của người già/trẻ nhỏ hoặc qua cầu hẹp. |
+| `P` | Bật/Tắt AI Auto-Pilot (RL) | Kích hoạt bộ điều hướng phân tầng kết hợp A* và mô hình RL 128 chiều (`GameRLNavigator`). |
+| `E` | Tương tác Ngữ cảnh | Nhận/trả nhiệm vụ trong Vùng Quạt Xanh Lá trước mặt NPC, vào/ra cửa nhà, thu hoạch nông sản. |
+| `G` | Tặng Quà NPC | Tặng nông sản trong khay đồ để tăng điểm Thân thiện (`Friendship Hearts`). |
+| `J / U / O` | Giao diện Quản lý | Mở Sổ tay thị trấn 3 Tab (`J`), Xưởng nâng cấp Robin (`U`) và Bảng Sự kiện Ngẫu nhiên (`O`). |
 
 ---
 

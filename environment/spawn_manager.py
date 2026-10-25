@@ -209,6 +209,7 @@ class SpawnManager:
                         valid_group = False
                         break
                     look_theta = math.atan2(cy - my, cx - mx)
+                    age_grp = random.choices(["adult", "elder", "child"], weights=[0.70, 0.20, 0.10])[0]
                     candidate_members.append(
                         HumanAgent(
                             obj_id=next_hid + m_idx,
@@ -221,6 +222,7 @@ class SpawnManager:
                             group_id=next_gid,
                             is_interacting_member=True,
                             name=f"human_talk_{next_hid + m_idx}",
+                            age_group=age_grp,
                         )
                     )
 
@@ -320,6 +322,11 @@ class SpawnManager:
                     jitter=2.5,
                 )
                 theta = math.atan2(wp2[1] - hy, wp2[0] - hx)
+                age_grp = (
+                    "adult"
+                    if is_runner
+                    else random.choices(["adult", "elder", "child"], weights=[0.60, 0.20, 0.20])[0]
+                )
                 humans.append(
                     HumanAgent(
                         obj_id=next_hid,
@@ -330,6 +337,7 @@ class SpawnManager:
                         waypoints=[(hx, hy), wp2],
                         group_id=None,
                         name=f"human_{'run' if is_runner else 'walk'}_{next_hid}",
+                        age_group=age_grp,
                     )
                 )
                 next_hid += 1

@@ -154,6 +154,7 @@ def generate_all_plots(logs_dir: str = "logs", results_dir: str = "results"):
     r_path.mkdir(parents=True, exist_ok=True)
 
     plot_learning_curves(l_path, r_path)
+    plot_benchmark_comparison(r_path / "benchmark_game.json", r_path)
     plot_benchmark_comparison(r_path / "benchmark_val.json", r_path)
     plot_benchmark_comparison(r_path / "benchmark_test.json", r_path)
 

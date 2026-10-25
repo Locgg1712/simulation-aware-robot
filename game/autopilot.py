@@ -19,6 +19,7 @@ from .farming import (
     is_within_harvest_reach,
 )
 from .quests import distance_to_harvest_spot, handle_interact_action
+from .rl_bridge import GAME_RL_NAVIGATOR
 from .safety_hri import check_front_interaction
 
 
@@ -210,20 +211,8 @@ def compute_autopilot_command(game, dt: float) -> tuple[float, float, bool]:
     if dist < 6.0:
         return 0.0, 0.0, True
 
-    ux, uy = dx / dist, dy / dist
-    slow = game.in_interior
-    active_npcs = game.interior_npcs if game.in_interior else game.npcs
-    for n in active_npcs:
-        nd = math.hypot(game.robot.x - n.x, game.robot.y - n.y)
-        if nd < 85.0:
-            slow = True
-            if nd > 1e-3 and (target_npc is None or n is not target_npc or nd < 44.0):
-                rep = (85.0 - nd) / 85.0
-                ux += ((game.robot.x - n.x) / nd) * rep * 1.6
-                uy += ((game.robot.y - n.y) / nd) * rep * 1.6
-
-    norm = math.hypot(ux, uy)
-    if norm > 1e-4:
-        ux, uy = ux / norm, uy / norm
-    return ux, uy, slow
+    # Điều hướng phân tầng: A* Global Sub-goal + Trained RL Policy (106-dim) + HRI Safety Shield
+    return GAME_RL_NAVIGATOR.compute_motion(
+        game, tx, ty, target_npc=target_npc
+    )
 

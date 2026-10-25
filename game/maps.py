@@ -371,7 +371,10 @@ def load_outdoor_map(
     elif map_id == 4:
         _build_map4_residential_village(game, wb, spawn_pos, spawn_theta)
 
-    game.terrain_surface = bake_terrain_surface(game)
+    if not getattr(game, "headless", False):
+        game.terrain_surface = bake_terrain_surface(game)
+    else:
+        game.terrain_surface = None
     game.set_banner(f"Đã tới {MAP_TITLES[map_id]}", (235, 248, 255))
 
 

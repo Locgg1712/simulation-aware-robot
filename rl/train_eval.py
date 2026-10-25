@@ -113,6 +113,14 @@ class RLPolicyAgent:
     def select_action_from_obs(self, obs: np.ndarray) -> RobotAction:
         if self.model is None:
             return RobotAction.STOP
+        obs_space = getattr(self.model, "observation_space", None)
+        if obs_space is not None and hasattr(obs_space, "shape") and obs_space.shape:
+            exp_dim = int(obs_space.shape[0])
+            if obs.shape[0] > exp_dim:
+                obs = obs[:exp_dim]
+            elif obs.shape[0] < exp_dim:
+                pad = np.zeros(exp_dim - obs.shape[0], dtype=np.float32)
+                obs = np.concatenate([obs, pad], axis=0)
         action, _ = self.model.predict(obs, deterministic=self.deterministic)
         return RobotAction(int(action))
 

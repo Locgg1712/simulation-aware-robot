@@ -10,11 +10,168 @@ from __future__ import annotations
 from pathlib import Path
 import pygame
 
+FALLBACK_SPRITE_SIZES: dict[str, tuple[int, int]] = {
+    "Agv back": (264, 298),
+    "Agv front": (264, 305),
+    "Agv left": (313, 297),
+    "Agv right": (314, 297),
+    "Agv up": (236, 300),
+    "barrel": (47, 71),
+    "bench": (83, 59),
+    "bridge_stone": (110, 87),
+    "bridge_wood": (108, 85),
+    "bush_berry": (86, 80),
+    "bush_green": (84, 77),
+    "cabbage": (38, 37),
+    "carrot": (29, 39),
+    "cat": (48, 60),
+    "chicken": (62, 66),
+    "corn": (30, 44),
+    "cow": (89, 75),
+    "crate": (60, 62),
+    "door_closed": (92, 87),
+    "door_closing": (92, 87),
+    "door_open": (93, 88),
+    "door_opening": (93, 87),
+    "fence_gate": (38, 32),
+    "fence_picket": (73, 40),
+    "fence_post_1": (17, 42),
+    "fence_post_2": (18, 42),
+    "fence_post_3": (19, 43),
+    "fence_rail_1": (58, 42),
+    "fence_rail_2": (58, 41),
+    "fishpond": (149, 125),
+    "floor_wood": (97, 93),
+    "flower_blue": (31, 40),
+    "flower_green": (32, 42),
+    "flower_pink": (31, 35),
+    "flower_white": (30, 35),
+    "flower_yellow_1": (31, 35),
+    "flower_yellow_2": (30, 40),
+    "furn_bed": (86, 102),
+    "furn_bookshelf": (106, 94),
+    "furn_counter": (131, 88),
+    "furn_fireplace": (108, 103),
+    "furn_plant": (81, 99),
+    "furn_rug": (119, 74),
+    "furn_table": (107, 96),
+    "furn_window": (93, 97),
+    "greenhouse": (155, 177),
+    "house_barn": (156, 187),
+    "house_blue": (134, 170),
+    "house_coop": (111, 158),
+    "house_farm": (164, 187),
+    "house_manor": (181, 186),
+    "house_robot": (729, 488),
+    "house_shed": (106, 130),
+    "house_town": (128, 181),
+    "icon_arrow": (37, 34),
+    "icon_clock": (35, 34),
+    "icon_coin": (31, 32),
+    "icon_heart": (36, 33),
+    "icon_house": (35, 38),
+    "icon_key": (35, 36),
+    "icon_parcel": (34, 36),
+    "icon_warning": (39, 38),
+    "jojamart": (164, 149),
+    "lamp_post": (27, 110),
+    "log": (126, 71),
+    "mailbox": (39, 77),
+    "npc_black": (48, 87),
+    "npc_blonde": (56, 85),
+    "npc_brown": (49, 86),
+    "npc_green": (43, 87),
+    "npc_old": (45, 84),
+    "npc_purple": (59, 85),
+    "npc_red": (51, 86),
+    "pig": (71, 67),
+    "pumpkin": (42, 41),
+    "red_mat": (100, 53),
+    "rh_barrel_blue1": (54, 81),
+    "rh_barrel_blue2": (56, 84),
+    "rh_battery_box": (51, 58),
+    "rh_bin": (54, 97),
+    "rh_bollard": (48, 102),
+    "rh_chair_blue": (62, 101),
+    "rh_chair_blue2": (66, 104),
+    "rh_charging_dock": (177, 168),
+    "rh_computer_desk": (171, 157),
+    "rh_cone": (64, 85),
+    "rh_cooling_unit": (115, 110),
+    "rh_crate_low": (72, 83),
+    "rh_crate_mid": (94, 97),
+    "rh_crate_open": (150, 83),
+    "rh_crate_single": (62, 84),
+    "rh_crate_tall": (62, 132),
+    "rh_crate_top": (94, 91),
+    "rh_diag_table": (174, 100),
+    "rh_exit_mat": (137, 162),
+    "rh_extinguisher": (47, 93),
+    "rh_floor_tile": (181, 159),
+    "rh_hazard_mat": (114, 164),
+    "rh_plant_small": (63, 72),
+    "rh_plant_tall": (90, 130),
+    "rh_round_table": (175, 142),
+    "rh_sensor_post": (37, 115),
+    "rh_server_1": (56, 113),
+    "rh_server_2": (58, 113),
+    "rh_shelf_narrow": (75, 211),
+    "rh_shelf_parts": (127, 214),
+    "rh_shelf_wide": (197, 212),
+    "rh_shutter_wide": (270, 107),
+    "rh_solder_station": (130, 96),
+    "rh_stool_1": (53, 54),
+    "rh_stool_2": (53, 60),
+    "rh_stool_3": (50, 68),
+    "rh_terminal": (107, 102),
+    "rh_tool_cabinet": (91, 129),
+    "rh_upgrade_station": (191, 246),
+    "rh_wall_arch": (132, 168),
+    "rh_wall_doors": (240, 168),
+    "rh_wall_screen": (112, 168),
+    "rh_wall_vent": (126, 167),
+    "rh_whiteboard": (222, 118),
+    "rh_workbench_green": (140, 147),
+    "robot_collision": (59, 93),
+    "robot_down": (57, 90),
+    "robot_left": (53, 90),
+    "robot_right": (54, 92),
+    "robot_up": (56, 89),
+    "rock_1": (40, 39),
+    "rock_2": (44, 44),
+    "rock_3": (45, 45),
+    "rock_4": (44, 44),
+    "saloon": (127, 174),
+    "scarecrow": (67, 98),
+    "sheep": (82, 65),
+    "shop_pierre": (133, 177),
+    "signpost": (58, 83),
+    "silo": (99, 196),
+    "sprinkler": (55, 52),
+    "strawberry": (34, 40),
+    "stump": (108, 78),
+    "sunflower": (31, 46),
+    "tomato": (31, 36),
+    "tree_cherry": (135, 172),
+    "tree_oak": (144, 186),
+    "tree_pine": (121, 187),
+    "ui_button_hover": (57, 43),
+    "ui_button_normal": (55, 43),
+    "ui_button_pressed": (57, 43),
+    "ui_panel": (145, 90),
+    "wallpaper": (95, 92),
+    "well": (72, 93),
+    "well_roof": (55, 95),
+    "wheat": (28, 45),
+    "windmill": (113, 179),
+}
+
 
 class SpriteVault:
-    """Tự động nạp và cache các bức ảnh PNG từ `sprites/sprites`."""
+    """Tự động nạp và cache các bức ảnh PNG từ `sprites/sprites` (hỗ trợ cả chế độ Headless trên Kaggle)."""
 
-    def __init__(self, root_dir: str | Path | None = None):
+    def __init__(self, root_dir: str | Path | None = None, headless: bool = False):
+        self.headless = bool(headless)
         if root_dir is not None and Path(root_dir).exists():
             self.root = Path(root_dir)
         else:
@@ -62,14 +219,29 @@ class SpriteVault:
     def raw(self, rel_path: str) -> pygame.Surface | None:
         if rel_path not in self._raw:
             clean = rel_path[:-4] if rel_path.lower().endswith(".png") else rel_path
+            if self.headless or pygame.display.get_surface() is None:
+                size = FALLBACK_SPRITE_SIZES.get(clean)
+                if size is None and clean.startswith("characters/"):
+                    size = (48, 86)
+                if size is not None:
+                    self._raw[rel_path] = pygame.Surface(size)
+                    return self._raw[rel_path]
+
             p = self.root / f"{clean}.png"
             if not p.exists():
                 p = self.root / f"{clean}.PNG"
             if p.exists():
-                self._raw[rel_path] = pygame.image.load(str(p)).convert_alpha()
+                if pygame.display.get_surface() is not None:
+                    self._raw[rel_path] = pygame.image.load(str(p)).convert_alpha()
+                else:
+                    self._raw[rel_path] = pygame.image.load(str(p))
             else:
-                self._raw[rel_path] = None
-                self._missing.add(rel_path)
+                size = FALLBACK_SPRITE_SIZES.get(clean)
+                if size is not None:
+                    self._raw[rel_path] = pygame.Surface(size)
+                else:
+                    self._raw[rel_path] = None
+                    self._missing.add(rel_path)
         return self._raw[rel_path]
 
     def exists(self, rel_path: str) -> bool:

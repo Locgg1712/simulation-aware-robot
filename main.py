@@ -29,20 +29,6 @@ def load_config(config_path: str = "configs/default_config.yaml") -> dict:
         return yaml.safe_load(f)
 
 
-def map_keyboard_to_action(keys, pygame_mod) -> RobotAction:
-    if keys[pygame_mod.K_s]:
-        return RobotAction.STOP
-    if keys[pygame_mod.K_UP] or keys[pygame_mod.K_w]:
-        return RobotAction.FORWARD
-    if keys[pygame_mod.K_LEFT] or keys[pygame_mod.K_a]:
-        return RobotAction.TURN_LEFT
-    if keys[pygame_mod.K_RIGHT]:
-        return RobotAction.TURN_RIGHT
-    if keys[pygame_mod.K_DOWN] or keys[pygame_mod.K_x]:
-        return RobotAction.SLOW_DOWN
-    return RobotAction.WAIT
-
-
 def run_gym_env_verification():
     from rl.gym_env import ContextAwareNavEnv
     from stable_baselines3.common.env_checker import check_env
@@ -89,7 +75,9 @@ def run_headless_simulation(config: dict, rl_cfg: dict, steps: int = 100):
     episode_reward = 0.0
 
     print("=" * 72)
-    print(f"[Headless Mode] Đang chạy mô phỏng {steps} bước trên {world.get_info()['topology']}...")
+    print(
+        f"[Headless Mode] Đang chạy mô phỏng {steps} bước trên {world.get_info()['topology']}..."
+    )
     for step_i in range(1, steps + 1):
         prev_goal_d = world.robot.distance_to_goal()
         prev_subgoal_d = world.subgoal_info["dist_to_subgoal"]
@@ -110,10 +98,12 @@ def run_headless_simulation(config: dict, rl_cfg: dict, steps: int = 100):
             )
         if info["is_collision"] or info["is_goal_reached"]:
             break
+
+
 def main():
     ensure_runtime_directories()
     parser = argparse.ArgumentParser(
-        description="Context-Aware Robot Navigation Simulation"
+        description="Context-Aware Robot Navigation Simulation & FarmBot Town Game"
     )
     parser.add_argument(
         "--check-env",
@@ -129,22 +119,6 @@ def main():
         type=int,
         default=100,
         help="Số bước chạy ở chế độ headless",
-    )
-    parser.add_argument(
-        "--model-path",
-        type=str,
-        default=None,
-    )
-    parser.add_argument(
-        "--algo",
-        type=str,
-        default="PPO",
-    )
-    parser.add_argument(
-        "--mode",
-        type=str,
-        default="full_context",
-        choices=["full_context", "no_context"],
     )
     args = parser.parse_args()
 
@@ -164,107 +138,10 @@ def main():
         run_headless_simulation(config, rl_cfg, steps=args.steps)
         return
 
-    import pygame
-    from rl.train_eval import RLPolicyAgent
-    from visualization.pygame_renderer import PygameRenderer
+    # Khởi chạy trực tiếp trò chơi FarmBot Town RPG (game/app.py)
+    from game.app import main as run_game_main
 
-    world = World(config)
-    renderer = PygameRenderer(world, config)
-
-    include_social = args.mode == "full_context"
-    state_builder = StateBuilder(include_social_context=include_social)
-    reward_calc = RewardCalculator(rl_cfg.get("reward_weights", {}))
-    episode_reward = 0.0
-
-    baseline_basic = RuleBasedAgent(mode="basic")
-    baseline_social = RuleBasedAgent(mode="social")
-
-    rl_agent = RLPolicyAgent(include_social_context=include_social)
-    if args.model_path:
-        loaded = rl_agent.load(args.model_path, algo=args.algo)
-    else:
-        loaded = rl_agent.auto_load_default(mode=args.mode)
-
-    if loaded:
-        print(f"[RL Policy] Đã nạp thành công model: {rl_agent.loaded_path}")
-        renderer.agent_mode = 4
-    else:
-        print("[RL Policy] Chưa tìm thấy file model trong 'models/'. Phím 4 sẽ tạm dùng Baseline 2.")
-
-    world.use_social_astar = renderer.agent_mode in (3, 4)
-    world.replan_global_path()
-    world._update_subgoal()
-
-    running = True
-    while running:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                running = False
-            elif event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_ESCAPE:
-                    running = False
-                elif event.key == pygame.K_SPACE:
-                    renderer.paused = not renderer.paused
-                elif event.key == pygame.K_d:
-                    renderer.debug_mode = not renderer.debug_mode
-                elif event.key == pygame.K_v:
-                    renderer.stardew_mode = not renderer.stardew_mode
-                elif event.key == pygame.K_r:
-                    world.reset()
-                    episode_reward = 0.0
-                    renderer.update_rl_telemetry(0.0, 0.0, {})
-                elif event.key == pygame.K_t:
-                    world.next_topology()
-                    episode_reward = 0.0
-                    renderer.update_rl_telemetry(0.0, 0.0, {})
-                elif event.key == pygame.K_e:
-                    world.toggle_indoor_house()
-                elif event.key == pygame.K_h:
-                    renderer.show_hud = not renderer.show_hud
-                elif event.key in (pygame.K_1, pygame.K_2, pygame.K_3, pygame.K_4):
-                    renderer.agent_mode = event.key - pygame.K_0
-                    world.use_social_astar = renderer.agent_mode in (3, 4)
-                    world.replan_global_path()
-                    world._update_subgoal()
-
-        if not renderer.paused and not (world.is_collision or world.is_goal_reached):
-            if renderer.agent_mode == 1:
-                keys = pygame.key.get_pressed()
-                action = map_keyboard_to_action(keys, pygame)
-            elif renderer.agent_mode == 2:
-                action = baseline_basic.select_action(world)
-            elif renderer.agent_mode == 3:
-                action = baseline_social.select_action(world)
-            else:
-                if rl_agent.is_loaded:
-                    action = rl_agent.select_action(world)
-                else:
-                    action = baseline_social.select_action(world)
-
-            prev_goal_d = world.robot.distance_to_goal()
-            prev_subgoal_d = world.subgoal_info["dist_to_subgoal"]
-
-            world.step(action)
-
-            state_vec = state_builder.build(world)
-            step_rew, breakdown = reward_calc.compute(
-                world=world,
-                action=action,
-                prev_goal_dist=prev_goal_d,
-                prev_subgoal_dist=prev_subgoal_d,
-            )
-            episode_reward += step_rew
-            renderer.update_rl_telemetry(
-                step_reward=step_rew,
-                episode_reward=episode_reward,
-                breakdown=breakdown,
-                state_dim=len(state_vec),
-            )
-
-        renderer.render()
-
-    renderer.close()
-    sys.exit(0)
+    run_game_main()
 
 
 if __name__ == "__main__":

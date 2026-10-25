@@ -1,3 +1,4 @@
 # perception/__init__.py
-from .trajectory_predictor import predict_constant_velocity_trajectory
 from .ground_truth import extract_local_perception
+
+__all__ = ["extract_local_perception"]

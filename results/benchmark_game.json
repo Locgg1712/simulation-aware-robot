@@ -1,0 +1,62 @@
+[
+  {
+    "episodes": 10,
+    "success_rate": 30.0,
+    "collision_rate": 70.0,
+    "timeout_rate": 0.0,
+    "navigation_time": 10.83,
+    "path_length": 10.42,
+    "social_intrusion_ratio": 11.7,
+    "group_splitting_count": 0.1,
+    "smart_wait_count": 0.1,
+    "mean_reward": -40.17,
+    "baseline_id": "baseline_1",
+    "baseline_name": "Baseline 1: A* + Basic Avoidance",
+    "split": "game"
+  },
+  {
+    "episodes": 10,
+    "success_rate": 60.0,
+    "collision_rate": 40.0,
+    "timeout_rate": 0.0,
+    "navigation_time": 11.93,
+    "path_length": 10.53,
+    "social_intrusion_ratio": 7.4,
+    "group_splitting_count": 0.0,
+    "smart_wait_count": 5.5,
+    "mean_reward": 26.2,
+    "baseline_id": "baseline_2",
+    "baseline_name": "Baseline 2: A* + Social Rules",
+    "split": "game"
+  },
+  {
+    "episodes": 10,
+    "success_rate": 30.0,
+    "collision_rate": 70.0,
+    "timeout_rate": 0.0,
+    "navigation_time": 10.77,
+    "path_length": 10.58,
+    "social_intrusion_ratio": 9.86,
+    "group_splitting_count": 0.4,
+    "smart_wait_count": 0.0,
+    "mean_reward": -48.18,
+    "baseline_id": "baseline_3",
+    "baseline_name": "Baseline 3: A* + RL (No Social Context)",
+    "split": "game"
+  },
+  {
+    "episodes": 10,
+    "success_rate": 30.0,
+    "collision_rate": 70.0,
+    "timeout_rate": 0.0,
+    "navigation_time": 10.9,
+    "path_length": 10.43,
+    "social_intrusion_ratio": 8.07,
+    "group_splitting_count": 0.2,
+    "smart_wait_count": 3.1,
+    "mean_reward": -40.61,
+    "baseline_id": "baseline_4",
+    "baseline_name": "Baseline 4: A* + RL (Full Context)",
+    "split": "game"
+  }
+]

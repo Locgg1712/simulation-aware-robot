@@ -41,6 +41,8 @@ class HumanAgent(BaseObject):
         group_id: int | None = None,
         is_interacting_member: bool = False,
         name: str = "",
+        age_group: str = "adult",
+        safety_radius: float | None = None,
     ):
         super().__init__(
             obj_id=obj_id,
@@ -61,6 +63,12 @@ class HumanAgent(BaseObject):
 
         self.group_id: int | None = group_id
         self.is_interacting_member: bool = is_interacting_member
+
+        self.age_group: str = age_group if age_group in ("adult", "elder", "child") else "adult"
+        if safety_radius is not None:
+            self.safety_radius: float = float(safety_radius)
+        else:
+            self.safety_radius = 1.65 if self.age_group in ("elder", "child") else 1.25
 
         self.activity: HumanActivity = HumanActivity.STANDING
         self.social_context: SocialContext = SocialContext.ALONE
@@ -125,3 +133,15 @@ class HumanAgent(BaseObject):
             else 0.0
         )
         return [is_alone, is_motion_conflict, is_group_context]
+
+    def age_radar_vector(self) -> list[float]:
+        """
+        Mã hóa 4 chiều Nhóm Tuổi & Bán kính Radar An toàn (Mục 12.1 - Khối 6):
+        [is_adult, is_elder, is_child, R_safe / 2.0]
+        """
+        return [
+            1.0 if self.age_group == "adult" else 0.0,
+            1.0 if self.age_group == "elder" else 0.0,
+            1.0 if self.age_group == "child" else 0.0,
+            min(1.0, self.safety_radius / 2.0),
+        ]
