@@ -1,11 +1,11 @@
-from .plot_results import generate_all_plots
+from .plot_results import (
+    generate_all_plots,
+    plot_benchmark_comparison,
+    plot_learning_curves,
+)
 
-__all__ = ["PygameRenderer", "generate_all_plots"]
-
-
-def __getattr__(name: str):
-    if name == "PygameRenderer":
-        from .pygame_renderer import PygameRenderer
-
-        return PygameRenderer
-    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+__all__ = [
+    "generate_all_plots",
+    "plot_benchmark_comparison",
+    "plot_learning_curves",
+]

@@ -306,11 +306,15 @@ class WorldBuilder:
         rect = pygame.Rect(c0 * T, r0 * T, (c1 - c0 + 1) * T, (r1 - r0 + 1) * T)
         if fence:
             self.fence_box(c0, r0, c1, r1, style="rail", open_side="S")
-        if scarecrow:
-            self.prop("scarecrow", rect.centerx + self.rng.randint(-20, 20), rect.centery + 16,
-                      h=60, solid=False)
-        if sprinkler:
-            self.prop("sprinkler", rect.x + 1.5 * T, rect.bottom - 0.6 * T, h=26, solid=False)
+        # Chỉ ruộng trang trí (không có spot_id) mới đặt sẵn bù nhìn/vòi tưới tĩnh;
+        # các ruộng thu hoạch thật khởi đầu trống hoàn toàn để người chơi tự mua & lắp đặt từ Cô Caroline!
+        is_harvest_plot = bool(spot_id)
+        if not is_harvest_plot:
+            if scarecrow:
+                self.prop("scarecrow", rect.centerx + self.rng.randint(-20, 20), rect.centery + 16,
+                          h=60, solid=False)
+            if sprinkler:
+                self.prop("sprinkler", rect.x + 1.5 * T, rect.bottom - 0.6 * T, h=26, solid=False)
         spot = HarvestSpot(
             spot_id=spot_id or f"deco_{crop}_{c0}_{r0}",
             title=title or f"Ruộng {crop}",
@@ -320,8 +324,14 @@ class WorldBuilder:
             kind="crop_plot",
             crop_name=crop,
             field_rect=rect,
+            has_sprinkler=False if is_harvest_plot else bool(sprinkler),
+            has_scarecrow=False if is_harvest_plot else bool(scarecrow),
+            has_bio_sensor=False,
         )
-        if spot_id:
+        if is_harvest_plot:
+            from .farming import init_empty_crop_plot
+
+            init_empty_crop_plot(spot)
             self.game.harvest_spots.append(spot)
         else:
             # Ruộng trang trí: cây phát triển ở các giai đoạn khác nhau cho sinh động

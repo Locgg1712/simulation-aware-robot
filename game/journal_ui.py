@@ -321,7 +321,72 @@ DEFAULT_NPCS_DB: dict[str, dict[str, Any]] = {
         "secret_hint": "Elliott đi dọc lối đất trước nhà Gus tìm cảm hứng viết văn.",
         "schedule_hint": "Đi tuần lối đất phía tây Map 4 (4 hướng).",
     },
+    "Bác sĩ Harvey": {
+        "name": "Bác sĩ Harvey",
+        "role": "Bác Sĩ Phòng Khám Y Tế",
+        "folder": "npc_13_scholar",
+        "age_group": "Cư Dân",
+        "map_id": 1,
+        "loved_items": ["peach", "apple", "bread"],
+        "liked_items": ["carrot", "orange", "cabbage"],
+        "hated_items": ["parcel", "fish"],
+        "favorite_desc": "Đào Tiên Hồng, Táo Đỏ Chín, Bánh Mì Nóng",
+        "secret_hint": "Bác sĩ Harvey trực tại Phòng Khám Y Tế Map 1 (bấm [E] vào cửa nhà).",
+        "schedule_hint": "Làm việc tại Phòng Khám Y Tế Map 1 (Nội thất Map 5).",
+    },
+    "Cô Caroline": {
+        "name": "Cô Caroline",
+        "role": "Cửa Hàng Hạt Giống [E]",
+        "folder": "npc_purple",
+        "age_group": "Cư Dân",
+        "safety_radius_m": 1.25,
+        "map_id": 2,
+        "loved_items": ["strawberry", "golden_flower", "tomato"],
+        "liked_items": ["wheat", "carrot", "cabbage", "corn"],
+        "hated_items": ["fish", "parcel"],
+        "favorite_desc": "Dâu Tây Đỏ, Hoa Cúc Vàng, Cà Chua Chín",
+        "secret_hint": "Đứng vào Quạt Xanh trước mặt Cô Caroline tại Map 2 và bấm [E] để mở Cửa Hàng Hạt Giống.",
+        "schedule_hint": "Đứng quầy Hạt Giống trung tâm Đại Nông Trại Map 2 (1 hướng).",
+    },
 }
+
+
+def _sync_default_npcs_with_json() -> None:
+    """Đồng bộ DEFAULT_NPCS_DB từ game/data/npcs.json để có duy nhất 1 nguồn dữ liệu quà tặng & hồ sơ (D1, D5)."""
+    json_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "npcs.json")
+    if not os.path.isfile(json_path):
+        return
+    try:
+        with open(json_path, "r", encoding="utf-8") as f:
+            raw_db = json.load(f)
+    except Exception:
+        return
+    if not isinstance(raw_db, dict):
+        return
+    age_map = {
+        "elder": "Người Cao Tuổi",
+        "child": "Trẻ Nhỏ",
+        "adult": "Cư Dân",
+    }
+    for name, info in raw_db.items():
+        if not isinstance(info, dict) or name not in DEFAULT_NPCS_DB:
+            continue
+        entry = DEFAULT_NPCS_DB[name]
+        if "loved_items" in info:
+            entry["loved_items"] = list(info["loved_items"])
+        if "liked_items" in info:
+            entry["liked_items"] = list(info["liked_items"])
+        if "hated_items" in info:
+            entry["hated_items"] = list(info["hated_items"])
+        if "age_group" in info:
+            entry["age_group"] = age_map.get(str(info["age_group"]), entry["age_group"])
+        if "safety_radius_m" in info:
+            entry["safety_radius_m"] = float(info["safety_radius_m"])
+        if "sprite" in info and info["sprite"]:
+            entry["folder"] = str(info["sprite"])
+
+
+_sync_default_npcs_with_json()
 
 
 def get_npc_age_group(game: Any, npc_name: str) -> str:
@@ -357,120 +422,11 @@ def get_npc_age_group(game: Any, npc_name: str) -> str:
     return "Cư Dân"
 
 
-# ==============================================================================
-# HỆ THỐNG LƯU / TẢI TIẾN TRÌNH CHƠI (TownGameState - 3 Save Slots)
-# ==============================================================================
-class TownGameState:
-    """Quản lý dữ liệu lưu trữ (3 Save Slots) và cơ sở dữ liệu cư dân thị trấn."""
-
-    def __init__(self) -> None:
-        self.npcs_db: dict[str, dict[str, Any]] = dict(DEFAULT_NPCS_DB)
-        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        self.save_dir: str = os.path.join(base_dir, "saves")
-        try:
-            os.makedirs(self.save_dir, exist_ok=True)
-        except Exception:
-            pass
-
-    def get_slot_path(self, slot_idx: int) -> str:
-        """Đường dẫn tệp JSON của slot lưu trữ tương ứng (1, 2, 3)."""
-        return os.path.join(self.save_dir, f"save_slot_{slot_idx}.json")
-
-    def get_slot_info(self, slot_idx: int) -> dict[str, Any] | None:
-        """Đọc tóm tắt thông tin save slot nếu tồn tại."""
-        path = self.get_slot_path(slot_idx)
-        if not os.path.exists(path):
-            return None
-        try:
-            with open(path, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except Exception:
-            return None
-
-    def save_to_slot(self, game: Any, slot_idx: int) -> bool:
-        """Lưu toàn bộ trạng thái tiến trình chơi vào slot 1, 2, hoặc 3."""
-        try:
-            os.makedirs(self.save_dir, exist_ok=True)
-            path = self.get_slot_path(slot_idx)
-            data = {
-                "slot_idx": slot_idx,
-                "save_time": time.strftime("%d/%m/%Y %H:%M"),
-                "score": getattr(game, "score", 0),
-                "gold": getattr(game, "gold", 60),
-                "hearts": getattr(game, "hearts", 3),
-                "completed_quests_count": getattr(game, "completed_quests_count", 0),
-                "quest_idx": getattr(game, "quest_idx", 0),
-                "current_map_id": getattr(game, "current_map_id", 1),
-                "in_interior": getattr(game, "in_interior", False),
-                "robot_x": getattr(game.robot, "x", 0.0),
-                "robot_y": getattr(game.robot, "y", 0.0),
-                "robot_theta": getattr(game.robot, "theta", 0.0),
-                "inventory": list(getattr(game.robot, "inventory", [])),
-                "max_inventory": getattr(game.robot, "max_inventory", 4),
-                "friendship": dict(getattr(game.dialogue, "friendship", {})),
-                "workshop_bought": dict(getattr(game.workshop, "bought_status", {})),
-            }
-            with open(path, "w", encoding="utf-8") as f:
-                json.dump(data, f, ensure_ascii=False, indent=2)
-            if hasattr(game, "set_banner"):
-                game.set_banner(
-                    f"ĐÃ LƯU GAME VÀO SLOT {slot_idx} THÀNH CÔNG! ({data['gold']}G | {data['score']}đ)",
-                    (115, 255, 145),
-                )
-            return True
-        except Exception as e:
-            if hasattr(game, "set_banner"):
-                game.set_banner(f"Lỗi khi lưu Slot {slot_idx}: {e}", (255, 110, 110))
-            return False
-
-    def load_from_slot(self, game: Any, slot_idx: int) -> bool:
-        """Tải trạng thái tiến trình chơi từ slot 1, 2, hoặc 3."""
-        path = self.get_slot_path(slot_idx)
-        if not os.path.exists(path):
-            if hasattr(game, "set_banner"):
-                game.set_banner(f"Slot {slot_idx} chưa có dữ liệu lưu!", (255, 165, 100))
-            return False
-        try:
-            with open(path, "r", encoding="utf-8") as f:
-                data = json.load(f)
-            game.score = data.get("score", getattr(game, "score", 0))
-            game.gold = data.get("gold", getattr(game, "gold", 60))
-            game.hearts = data.get("hearts", getattr(game, "hearts", 3))
-            game.completed_quests_count = data.get("completed_quests_count", getattr(game, "completed_quests_count", 0))
-            quests_len = len(getattr(game, "quests", [1]))
-            game.quest_idx = data.get("quest_idx", getattr(game, "quest_idx", 0)) % max(1, quests_len)
-
-            if hasattr(game, "robot"):
-                game.robot.inventory = list(data.get("inventory", []))
-                game.robot.max_inventory = data.get("max_inventory", 4)
-            if hasattr(game, "dialogue"):
-                game.dialogue.friendship = dict(data.get("friendship", {}))
-            if hasattr(game, "workshop"):
-                game.workshop.bought_status = dict(data.get("workshop_bought", {}))
-                game.workshop.apply_passive_effects(game)
-
-            map_id = data.get("current_map_id", 1)
-            spawn_pos = (data.get("robot_x", game.robot.x), data.get("robot_y", game.robot.y))
-            spawn_theta = data.get("robot_theta", game.robot.theta)
-            if hasattr(game, "load_outdoor_map"):
-                game.load_outdoor_map(map_id, spawn_pos=spawn_pos, spawn_theta=spawn_theta)
-
-            if hasattr(game, "set_banner"):
-                game.set_banner(
-                    f"ĐÃ TẢI TIẾN TRÌNH TỪ SLOT {slot_idx} THÀNH CÔNG! Chào mừng trở lại.",
-                    (115, 255, 145),
-                )
-            return True
-        except Exception as e:
-            if hasattr(game, "set_banner"):
-                game.set_banner(f"Lỗi khi tải Slot {slot_idx}: {e}", (255, 110, 110))
-            return False
-
-
-def ensure_game_state(game: Any) -> TownGameState:
-    """Đảm bảo đối tượng game.state luôn tồn tại và sẵn sàng sử dụng."""
+def ensure_game_state(game: Any) -> Any:
+    """Đảm bảo đối tượng game.state (GameState trung tâm) luôn tồn tại và sẵn sàng sử dụng (D7)."""
     if not hasattr(game, "state") or game.state is None:
-        game.state = TownGameState()
+        from .game_state import GameState
+        game.state = GameState()
     return game.state
 
 
@@ -527,6 +483,9 @@ class JournalAndCompendiumModal:
             return True
         elif key in (pygame.K_3, pygame.K_KP3) or u == "3":
             self.current_tab = 3
+            return True
+        elif key in (pygame.K_4, pygame.K_KP4) or u == "4":
+            self.current_tab = 4
             return True
         elif self.current_tab == 1 and key in (pygame.K_LEFT, pygame.K_PAGEUP):
             self.npc_page = max(0, getattr(self, "npc_page", 0) - 1)
@@ -640,16 +599,17 @@ class JournalAndCompendiumModal:
             ),
         )
 
-        # 4. Thanh 3 Tab chuyển đổi
+        # 4. Thanh 4 Tab chuyển đổi
         self.tab_rects.clear()
         tab_defs = [
             (1, "[1] Sổ Tay Cư Dân & Mốc Tim"),
-            (2, "[2] Thư Viện Đơn Hàng & Bí Mật Thị Trấn"),
-            (3, "[3] Lưu / Tải Game (3 Slots) & Core Loop"),
+            (2, "[2] Thư Viện Đơn Hàng & Bí Mật"),
+            (3, "[3] Lưu / Tải Game & Core Loop"),
+            (4, "[4] Chứng Nhận HRI & Thành Tựu"),
         ]
         start_tx = mx + 24
         tab_y = my + 68
-        tab_w = 310
+        tab_w = 242
         tab_h = 34
         mouse_pos = pygame.mouse.get_pos()
 
@@ -682,7 +642,7 @@ class JournalAndCompendiumModal:
                     t_rect.centery - t_surf.get_height() // 2,
                 ),
             )
-            start_tx += tab_w + 14
+            start_tx += tab_w + 12
 
         # Phân cách giữa Tab và Nội dung
         pygame.draw.line(screen, (115, 76, 46), (mx + 20, my + 108), (mx + mw - 20, my + 108), 2)
@@ -694,9 +654,11 @@ class JournalAndCompendiumModal:
             self._render_tab2_quests_secrets(screen, game, mx, my, mw, mh)
         elif self.current_tab == 3:
             self._render_tab3_save_loop(screen, game, mx, my, mw, mh)
+        elif self.current_tab == 4:
+            self._render_tab4_certifications_and_achievements(screen, game, mx, my, mw, mh)
 
         # 6. Footer hướng dẫn
-        guide_txt = "Phím tắt: [1], [2], [3] Chuyển Tab  |  [G]: Tặng Quà Cư Dân  |  [J] hoặc [ESC]: Đóng Sổ Tay"
+        guide_txt = "Phím tắt: [1], [2], [3], [4] Chuyển Tab  |  [C]: Gọi AGV  |  [G]: Tặng Quà  |  [J]/[ESC]: Đóng"
         g_surf = font_xs.render(guide_txt, True, (215, 195, 145))
         screen.blit(g_surf, (mx + mw // 2 - g_surf.get_width() // 2, my + mh - 24))
 
@@ -988,37 +950,46 @@ class JournalAndCompendiumModal:
 
             qy += 48
 
-        # Danh sách đơn hàng đặc biệt mùa vụ & mốc tim
+        # Danh sách đơn hàng đặc biệt mùa vụ & mốc tim đọc động từ game.quests (D3)
         qy += 8
         screen.blit(font_sm.render("ĐƠN ĐẶC BIỆT MÙA VỤ & MỐC TIM:", True, (255, 225, 95)), (left_x, qy))
         qy += 26
 
-        special_orders = [
-            (
-                "Đơn VIP 5 ♥: Tiệc Làng Thịnh Soạn",
-                "Giao 4 Bí Ngô & 2 Cá Hồ cho Gus Saloon",
-                "Thưởng: +350G, +150đ | Yêu cầu: 5 ♥ với Gus / Lewis",
-                (255, 215, 65),
-            ),
-            (
-                "Đơn Mùa Xuân: Lễ Hội Hoa Anh Đào",
-                "Mang 4 Quả Đào Tiên ra Bờ Đảo Bắc Map 3",
-                "Thưởng: +280G, Vương Miện Hoa | Yêu cầu: Mùa Xuân [V]",
-                (255, 160, 200),
-            ),
-            (
-                "Đơn Kiểm Định 3 ♥: Xưởng Mộc Robin",
-                "Chế tạo giàn tưới tiêu tự động cho Nông trại",
-                "Thưởng: +220G, Giảm 20% Xưởng | Yêu cầu: 3 ♥ Robin",
-                (125, 245, 145),
-            ),
-        ]
+        special_quests = [
+            q for q in quests
+            if getattr(q, "special", False) or getattr(q, "min_hearts", 0) > 0 or getattr(q, "season_req", "")
+        ][:3]
 
-        for s_title, s_desc, s_rew, s_col in special_orders:
+        for sq in special_quests:
+            min_h = int(getattr(sq, "min_hearts", 0))
+            s_req = str(getattr(sq, "season_req", ""))
+            r_gold = int(getattr(sq, "reward_gold", 150))
+            r_score = int(getattr(sq, "reward_score", 200))
+            cur_h = 2
+            if hasattr(game, "dialogue") and game.dialogue is not None:
+                cur_h = max(
+                    game.dialogue.get_hearts(sq.giver_name),
+                    game.dialogue.get_hearts(sq.receiver_name),
+                )
+            unlocked = cur_h >= min_h
+            lock_tag = "[ĐÃ MỞ KHÓA]" if unlocked else f"[CẦN {min_h}♥]"
+            if s_req == "spring":
+                s_col = (255, 160, 200)
+                req_txt = "Mùa Xuân"
+            elif min_h >= 5:
+                s_col = (255, 215, 65)
+                req_txt = f"Mốc {min_h}♥ với {sq.giver_name}/{sq.receiver_name}"
+            else:
+                s_col = (125, 245, 145)
+                req_txt = f"Mốc {min_h}♥ với {sq.giver_name}/{sq.receiver_name}"
+
             sp_box = pygame.Rect(left_x, qy, left_w, 48)
             pygame.draw.rect(screen, (38, 26, 18), sp_box, border_radius=6)
-            pygame.draw.rect(screen, s_col, sp_box, width=1, border_radius=6)
+            pygame.draw.rect(screen, s_col if unlocked else (115, 85, 60), sp_box, width=1, border_radius=6)
 
+            s_title = f"{sq.title}  {lock_tag}"
+            s_desc = f"{sq.giver_name} -> {sq.receiver_name} ({sq.item_label})"
+            s_rew = f"Thưởng: +{r_gold}G, +{r_score}đ | Yêu cầu: {req_txt}"
             screen.blit(font_xs.render(s_title, True, s_col), (sp_box.x + 8, sp_box.y + 4))
             screen.blit(font_xs.render(s_desc, True, (235, 225, 210)), (sp_box.x + 8, sp_box.y + 18))
             screen.blit(font_xs.render(s_rew, True, (205, 190, 160)), (sp_box.x + 8, sp_box.y + 32))
@@ -1178,3 +1149,128 @@ class JournalAndCompendiumModal:
             for li, lstr in enumerate(st_desc.split("\n")):
                 screen.blit(font_xs.render(lstr, True, (220, 210, 195)), (loop_box.x + 12, step_y + 15 + li * 13))
             step_y += 42
+
+    # --------------------------------------------------------------------------
+    # TAB 4: CHỨNG NHẬN AN TOÀN HRI, MỤC TIÊU DÀI HẠN & BẢNG THÀNH TỰU
+    # --------------------------------------------------------------------------
+    def _render_tab4_certifications_and_achievements(
+        self, screen: pygame.Surface, game: Any, mx: int, my: int, mw: int, mh: int
+    ) -> None:
+        from .game_state import ACHIEVEMENTS_CONFIG, CERTIFICATIONS_CONFIG
+        font_xs = getattr(game, "font_xs", None) or pygame.font.SysFont("Segoe UI", 13, bold=True)
+        font_sm = getattr(game, "font_sm", None) or pygame.font.SysFont("Segoe UI", 15, bold=True)
+        font_md = getattr(game, "font_md", None) or pygame.font.SysFont("Segoe UI", 18, bold=True)
+
+        state = ensure_game_state(game)
+        if hasattr(state, "check_achievements_and_certifications"):
+            state.check_achievements_and_certifications(game)
+
+        eval_score, eval_title = (
+            state.compute_mayor_evaluation_score(game)
+            if hasattr(state, "compute_mayor_evaluation_score")
+            else (0, "ROBOT TẬP SỰ")
+        )
+
+        # 1. Cột Trái (w = 486): Điểm Kiểm Định Thị Trưởng Lewis & 4 Cấp Chứng Nhận HRI
+        left_x = mx + 24
+        left_y = my + 118
+        left_w = 486
+
+        eval_box = pygame.Rect(left_x, left_y, left_w, 72)
+        pygame.draw.rect(screen, (38, 26, 18), eval_box, border_radius=8)
+        pygame.draw.rect(screen, (245, 198, 65), eval_box, width=2, border_radius=8)
+
+        screen.blit(
+            font_sm.render(f"ĐÁNH GIÁ ĐÔ THỊ CỦA THỊ TRƯỞNG LEWIS: {eval_score}/100 ĐIỂM", True, (255, 235, 105)),
+            (eval_box.x + 12, eval_box.y + 8),
+        )
+        screen.blit(
+            font_xs.render(f"Danh hiệu hiện tại: {eval_title}", True, (135, 245, 165)),
+            (eval_box.x + 12, eval_box.y + 30),
+        )
+        bar_bg = pygame.Rect(eval_box.x + 12, eval_box.y + 52, left_w - 24, 10)
+        pygame.draw.rect(screen, (24, 16, 12), bar_bg, border_radius=4)
+        fill_w = int((left_w - 24) * max(0.0, min(1.0, eval_score / 100.0)))
+        if fill_w > 0:
+            pygame.draw.rect(screen, (98, 238, 142), (bar_bg.x, bar_bg.y, fill_w, 10), border_radius=4)
+
+        cy = eval_box.bottom + 12
+        screen.blit(
+            font_sm.render("4 CẤP CHỨNG NHẬN AN TOÀN HRI & TỰ HÀNH ĐÔ THỊ:", True, (255, 225, 95)),
+            (left_x, cy),
+        )
+        cy += 24
+
+        cur_cert = getattr(state, "certification_level", 0)
+        for cfg in CERTIFICATIONS_CONFIG:
+            lvl = int(cfg["level"])
+            unlocked = cur_cert >= lvl
+            c_box = pygame.Rect(left_x, cy, left_w, 82)
+            bg_c = (32, 48, 34) if unlocked else (36, 24, 16)
+            bd_c = (105, 245, 138) if unlocked else (112, 76, 46)
+            pygame.draw.rect(screen, bg_c, c_box, border_radius=7)
+            pygame.draw.rect(screen, bd_c, c_box, width=2 if unlocked else 1, border_radius=7)
+
+            badge_str = "[ĐÃ CẤP CHỨNG NHẬN]" if unlocked else f"[THƯỞNG +{cfg['reward_gold']}G]"
+            screen.blit(
+                font_xs.render(f"{cfg['title']}  {badge_str}", True, (255, 238, 115) if unlocked else (235, 215, 185)),
+                (c_box.x + 10, c_box.y + 6),
+            )
+            screen.blit(
+                font_xs.render(f"Yêu cầu: {cfg['req_desc']}", True, (205, 195, 175)),
+                (c_box.x + 10, c_box.y + 28),
+            )
+            screen.blit(
+                font_xs.render(f"Đặc quyền: {cfg['perk_desc']}", True, (135, 245, 175) if unlocked else (165, 215, 245)),
+                (c_box.x + 10, c_box.y + 50),
+            )
+            cy += 90
+
+        # 2. Cột Phải (w = 498): 10 Thành Tựu Danh Giá (Achievements)
+        right_x = mx + 528
+        right_y = my + 118
+        right_w = 508
+
+        unlocked_set = getattr(state, "unlocked_achievements", set())
+        screen.blit(
+            font_md.render(f"BẢNG THÀNH TỰU FARMBOT ({len(unlocked_set)}/{len(ACHIEVEMENTS_CONFIG)})", True, (255, 235, 110)),
+            (right_x, right_y),
+        )
+        screen.blit(
+            font_xs.render("Mở khóa thành tựu để nhận thưởng nóng Vàng (G), Điểm Uy Tín & Tăng Điểm Kiểm Định", True, (215, 195, 175)),
+            (right_x, right_y + 24),
+        )
+
+        ay = right_y + 48
+        col_w = 248
+        row_h = 76
+        for idx, ach in enumerate(ACHIEVEMENTS_CONFIG):
+            c = idx % 2
+            r = idx // 2
+            ax = right_x + c * (col_w + 12)
+            ry = ay + r * (row_h + 8)
+            a_rect = pygame.Rect(ax, ry, col_w, row_h)
+            is_done = ach["id"] in unlocked_set
+
+            pygame.draw.rect(screen, (32, 46, 34) if is_done else (34, 22, 14), a_rect, border_radius=6)
+            pygame.draw.rect(screen, (98, 238, 132) if is_done else (98, 68, 42), a_rect, width=2 if is_done else 1, border_radius=6)
+
+            status_tag = "[ĐẠT]" if is_done else f"+{ach['reward_gold']}G"
+            title_s = font_xs.render(f"{ach['title']} ({status_tag})", True, (135, 255, 155) if is_done else (255, 225, 125))
+            screen.blit(title_s, (a_rect.x + 8, a_rect.y + 6))
+
+            # Tự ngắt dòng mô tả thành tựu trong 2 dòng gọn
+            words = ach["desc"].split(" ")
+            lines: list[str] = []
+            cur_l = ""
+            for w in words:
+                test_l = f"{cur_l} {w}".strip() if cur_l else w
+                if font_xs.size(test_l)[0] <= col_w - 16:
+                    cur_l = test_l
+                else:
+                    lines.append(cur_l)
+                    cur_l = w
+            if cur_l:
+                lines.append(cur_l)
+            for li, lstr in enumerate(lines[:2]):
+                screen.blit(font_xs.render(lstr, True, (215, 208, 195)), (a_rect.x + 8, a_rect.y + 26 + li * 16))

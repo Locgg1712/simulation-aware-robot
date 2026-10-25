@@ -249,6 +249,17 @@ class SpriteVault:
             pygame.draw.ellipse(surf, (218, 148, 68), (4, cy - 8, size - 8, 16))
             pygame.draw.ellipse(surf, (244, 188, 104), (6, cy - 6, size - 12, 10))
             pygame.draw.ellipse(surf, (132, 78, 28), (4, cy - 8, size - 8, 16), 2)
+        elif item_key == "iridium_ore":
+            pts = [
+                (cx, cy - r - 2),
+                (cx + r, cy - r // 3),
+                (cx + r - 2, cy + r - 1),
+                (cx - r + 2, cy + r - 1),
+                (cx - r, cy - r // 3),
+            ]
+            pygame.draw.polygon(surf, (175, 58, 232), pts)
+            pygame.draw.polygon(surf, (238, 175, 255), pts, 2)
+            pygame.draw.circle(surf, (255, 230, 255), (cx - 2, cy - 3), max(2, r // 4))
         else:
             spr = self.scaled("icon_parcel", size, size)
             if spr is not None:

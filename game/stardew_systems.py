@@ -139,12 +139,17 @@ class FishingBarMinigame:
             self.bar_pos = max_pos
             self.bar_vel = min(0.0, -self.bar_vel * 0.22)  # Nảy nhẹ ở đỉnh
 
-        # 3. Kiểm tra con cá có nằm trong vùng thanh xanh lá không
-        in_range = abs(self.fish_pos - self.bar_pos) <= (self.bar_half_size + 0.04)
+        # 3. Kiểm tra con cá có nằm trong vùng thanh xanh lá không (Lv.3 fast_harvest hỗ trợ giữ thanh dễ hơn)
+        ws_fish = getattr(game, "workshop", None)
+        fh_lv_fish = int(getattr(ws_fish, "upgrade_levels", {}).get("fast_harvest", 0)) if ws_fish is not None else 0
+        extra_margin = 0.08 if fh_lv_fish >= 3 else 0.04
+        gain_rate = 0.68 if fh_lv_fish >= 3 else 0.54
+        loss_rate = 0.13 if fh_lv_fish >= 3 else 0.18
+        in_range = abs(self.fish_pos - self.bar_pos) <= (self.bar_half_size + extra_margin)
         if in_range:
-            self.progress += 0.54 * dt
+            self.progress += gain_rate * dt
         else:
-            self.progress -= 0.18 * dt
+            self.progress -= loss_rate * dt
 
         self.progress = max(0.0, min(1.0, self.progress))
 
@@ -158,13 +163,19 @@ class FishingBarMinigame:
             # Tính Chất Lượng Cá (Quality):
             ws = getattr(game, "workshop", None)
             has_upgrade = False
+            fast_lv = 0
             if ws is not None:
+                if hasattr(ws, "_sync_levels_from_bought"):
+                    ws._sync_levels_from_bought()
                 b_status = getattr(ws, "bought_status", {})
+                u_levels = getattr(ws, "upgrade_levels", {})
                 has_upgrade = b_status.get("fast_harvest", False) or b_status.get("cargo_lv2", False)
+                fast_lv = int(u_levels.get("fast_harvest", 0))
 
             roll = random.random()
+            star_bonus = 0.12 if fast_lv >= 2 else 0.0
             if has_upgrade or self.elapsed_time < 3.2:
-                if roll < 0.55:
+                if roll < (0.55 + star_bonus):
                     quality = 2
                     stars = "**"
                     star_name = "Sao Vàng"
@@ -173,7 +184,7 @@ class FishingBarMinigame:
                     stars = "*"
                     star_name = "Sao Bạc"
             else:
-                if roll < 0.35:
+                if roll < (0.35 + star_bonus):
                     quality = 2
                     stars = "**"
                     star_name = "Sao Vàng"
@@ -215,6 +226,11 @@ class FishingBarMinigame:
             if not hasattr(game, "gold"):
                 game.gold = 0
             game.gold += reward_gold
+            if state is not None:
+                state.daily_gold_earned = getattr(state, "daily_gold_earned", 0) + reward_gold
+                state.total_fish_caught = getattr(state, "total_fish_caught", 0) + 1
+                if hasattr(state, "check_achievements_and_certifications"):
+                    state.check_achievements_and_certifications(game)
 
             # Cộng điểm SCORE_CATCH_FISH (+50đ)
             if hasattr(game, "add_score"):
@@ -355,19 +371,23 @@ class FishingBarMinigame:
 # ==============================================================================
 
 ITEM_GOLD_PRICES: dict[str, int] = {
-    "apple": 35,
-    "orange": 38,
-    "peach": 45,
-    "strawberry": 42,
-    "pumpkin": 55,
-    "tomato": 36,
-    "carrot": 32,
-    "corn": 34,
-    "cabbage": 40,
-    "wheat": 30,
-    "fish": 50,
-    "bread": 40,
-    "parcel": 60,
+    "wheat": 20,
+    "carrot": 22,
+    "corn": 24,
+    "apple": 25,
+    "tomato": 26,
+    "orange": 28,
+    "cabbage": 30,
+    "strawberry": 32,
+    "bread": 30,
+    "peach": 35,
+    "fish": 38,
+    "pumpkin": 42,
+    "parcel": 45,
+    "wild_berry": 28,
+    "mushroom": 36,
+    "golden_flower": 48,
+    "iridium_ore": 95,
 }
 
 # Vị trí Thùng Giao Hàng ở Map 2 (ngay cạnh Nhà Chính Nông Trại)
@@ -393,70 +413,92 @@ def try_use_shipping_bin(game: Any) -> bool:
     if dist > 68.0:
         return False
 
-    # Nếu khay đồ đang trống
+    # Nếu khay đồ của Robot đang trống -> kiểm tra xem Xe AGV đi theo có đang chở hàng không
+    from_agv = False
+    agv_source = None
     if not game.robot.inventory:
-        if hasattr(game, "set_banner"):
-            game.set_banner(
-                "Khay chứa đồ đang trống! Hãy thu hoạch nông sản rồi bỏ vào Thùng Giao Hàng để bán lấy Vàng (G).",
-                (255, 185, 95),
-            )
-        return True
+        for a in getattr(game, "agvs", []):
+            if getattr(a, "cargo", None) and (
+                getattr(a, "mode", "patrol") == "follow"
+                or math.hypot(a.x - game.robot.x, a.y - game.robot.y) <= 105.0
+                or math.hypot(a.x - SHIPPING_BIN_POS[0], a.y - SHIPPING_BIN_POS[1]) <= 120.0
+            ):
+                agv_source = a
+                from_agv = True
+                break
+        if not from_agv:
+            if hasattr(game, "set_banner"):
+                game.set_banner(
+                    "Khay chứa đồ đang trống! Hãy thu hoạch nông sản rồi bỏ vào Thùng Giao Hàng để bán lấy Vàng (G).",
+                    (255, 185, 95),
+                )
+            return True
 
     # Tìm vật phẩm để bán (ưu tiên vật phẩm không trùng với quest hiện tại)
     quest_item_key = ""
     if hasattr(game, "active_quest") and game.active_quest is not None:
         quest_item_key = getattr(game.active_quest, "item_key", "")
 
-    target_idx = -1
-    for i in range(len(game.robot.inventory) - 1, -1, -1):
-        if game.robot.inventory[i] != quest_item_key:
-            target_idx = i
-            break
+    if from_agv and agv_source is not None:
+        entry = agv_source.cargo.pop(0)
+        sold_item = str(entry.get("item_key", "apple"))
+        quality_stars = int(entry.get("quality", 0))
+        star_str = "**" if quality_stars >= 2 else ("*" if quality_stars == 1 else "")
+        state_obj = getattr(game, "state", None)
+        if state_obj is not None and getattr(agv_source, "mode", "") in ("follow", "parked"):
+            state_obj.agv_cargo = list(agv_source.cargo)
+        base_price = ITEM_GOLD_PRICES.get(sold_item, 25)
+    else:
+        target_idx = -1
+        for i in range(len(game.robot.inventory) - 1, -1, -1):
+            if game.robot.inventory[i] != quest_item_key:
+                target_idx = i
+                break
 
-    # Nếu tất cả đều trùng quest_item_key thì bán phần tử cuối cùng
-    if target_idx == -1:
-        target_idx = len(game.robot.inventory) - 1
+        # Nếu tất cả đều trùng quest_item_key thì bán phần tử cuối cùng
+        if target_idx == -1:
+            target_idx = len(game.robot.inventory) - 1
 
-    sold_item = game.robot.inventory.pop(target_idx)
-    base_price = ITEM_GOLD_PRICES.get(sold_item, 35)
+        sold_item = game.robot.inventory.pop(target_idx)
+        base_price = ITEM_GOLD_PRICES.get(sold_item, 25)
 
-    # Đọc và lấy Chất Lượng Sao từ game.state.slot_meta hoặc game.robot.slot_meta
-    quality_stars = 0
-    star_str = ""
-    slot_meta = getattr(getattr(game, "state", None), "slot_meta", None)
-    if slot_meta is None:
-        slot_meta = getattr(getattr(game, "robot", None), "slot_meta", None)
+        # Đọc và lấy Chất Lượng Sao từ game.state.slot_meta hoặc game.robot.slot_meta
+        quality_stars = 0
+        star_str = ""
+        slot_meta = getattr(getattr(game, "state", None), "slot_meta", None)
+        if slot_meta is None:
+            slot_meta = getattr(getattr(game, "robot", None), "slot_meta", None)
 
-    if isinstance(slot_meta, dict):
-        meta_entry = slot_meta.pop(target_idx, {})
-        if isinstance(meta_entry, dict):
-            quality_stars = meta_entry.get("quality", 0)
-            star_str = meta_entry.get("stars", "")
-        elif isinstance(meta_entry, InventorySlot):
-            quality_stars = meta_entry.quality
-            star_str = meta_entry.stars_label
-        # Dịch chuyển chỉ số của các slot nằm sau target_idx
-        shifted_meta = {}
-        for k, v in slot_meta.items():
-            if isinstance(k, int):
-                if k < target_idx:
+        if isinstance(slot_meta, dict):
+            meta_entry = slot_meta.pop(target_idx, {})
+            if isinstance(meta_entry, dict):
+                quality_stars = meta_entry.get("quality", 0)
+                star_str = meta_entry.get("stars", "")
+            elif isinstance(meta_entry, InventorySlot):
+                quality_stars = meta_entry.quality
+                star_str = meta_entry.stars_label
+            # Dịch chuyển chỉ số của các slot nằm sau target_idx
+            shifted_meta = {}
+            for k, v in slot_meta.items():
+                if isinstance(k, int):
+                    if k < target_idx:
+                        shifted_meta[k] = v
+                    elif k > target_idx:
+                        shifted_meta[k - 1] = v
+                else:
                     shifted_meta[k] = v
-                elif k > target_idx:
-                    shifted_meta[k - 1] = v
-            else:
-                shifted_meta[k] = v
-        if getattr(game, "state", None) is not None and hasattr(game.state, "slot_meta"):
-            game.state.slot_meta = shifted_meta
-        if hasattr(game.robot, "slot_meta"):
-            game.robot.slot_meta = shifted_meta
-    elif isinstance(slot_meta, list) and 0 <= target_idx < len(slot_meta):
-        meta_entry = slot_meta.pop(target_idx)
-        if isinstance(meta_entry, dict):
-            quality_stars = meta_entry.get("quality", 0)
-            star_str = meta_entry.get("stars", "")
-        elif isinstance(meta_entry, InventorySlot):
-            quality_stars = meta_entry.quality
-            star_str = meta_entry.stars_label
+            if getattr(game, "state", None) is not None and hasattr(game.state, "slot_meta"):
+                game.state.slot_meta = shifted_meta
+            if hasattr(game.robot, "slot_meta"):
+                game.robot.slot_meta = shifted_meta
+        elif isinstance(slot_meta, list) and 0 <= target_idx < len(slot_meta):
+            meta_entry = slot_meta.pop(target_idx)
+            if isinstance(meta_entry, dict):
+                quality_stars = meta_entry.get("quality", 0)
+                star_str = meta_entry.get("stars", "")
+            elif isinstance(meta_entry, InventorySlot):
+                quality_stars = meta_entry.quality
+                star_str = meta_entry.stars_label
 
     # Hệ số Chất Lượng Sao: * Bạc x1.25, ** Vàng x1.5, *** Iridium x2.0
     if quality_stars == 1 or star_str in ("★", "*"):
@@ -471,24 +513,54 @@ def try_use_shipping_bin(game: Any) -> bool:
     else:
         multiplier = 1.00
 
-    final_price = int(round(base_price * multiplier))
+    # Cộng thưởng Khoang Lạnh (cargo_lv2 Lv.2 -> x1.10, Lv.3 -> x1.25), Logistics AGV và Chứng nhận Cấp III (+15%)
+    ws = getattr(game, "workshop", None)
+    cargo_lv = 0
+    agv_lv = 0
+    if ws is not None:
+        if hasattr(ws, "_sync_levels_from_bought"):
+            ws._sync_levels_from_bought()
+        u_levels = getattr(ws, "upgrade_levels", {})
+        cargo_lv = int(u_levels.get("cargo_lv2", 0))
+        agv_lv = int(u_levels.get("agv_upgrade", 0))
+
+    fresh_mult = 1.25 if cargo_lv >= 3 else (1.10 if cargo_lv == 2 else 1.0)
+    state = getattr(game, "state", None)
+    cert_mult = 1.15 if (state is not None and getattr(state, "certification_level", 0) >= 3) else 1.0
+    if from_agv:
+        if agv_lv >= 3:
+            agv_mult = 1.45
+        elif agv_lv == 2:
+            agv_mult = 1.30
+        elif agv_lv == 1:
+            agv_mult = 1.20
+        else:
+            agv_mult = 1.15
+    else:
+        agv_mult = 1.0
+    final_price = int(round(base_price * multiplier * fresh_mult * cert_mult * agv_mult))
 
     if not hasattr(game, "gold"):
         game.gold = 0
     game.gold += final_price
 
     # Cập nhật thống kê kinh tế ngày trên game.state nếu có
-    state = getattr(game, "state", None)
     if state is not None:
         state.daily_gold_earned = getattr(state, "daily_gold_earned", 0) + final_price
         state.daily_crops_shipped = getattr(state, "daily_crops_shipped", 0) + 1
+        state.total_crops_shipped = getattr(state, "total_crops_shipped", 0) + 1
+        if hasattr(state, "check_achievements_and_certifications"):
+            state.check_achievements_and_certifications(game)
 
     # Phát âm thanh SFX "gold"
     audio = getattr(game, "audio", None)
     if audio is not None and hasattr(audio, "play_sfx"):
         audio.play_sfx("gold")
 
-    name_vi = ITEM_NAMES_VI.get(sold_item, sold_item)
+    if state is not None and hasattr(state, "get_item_name"):
+        name_vi = state.get_item_name(sold_item)
+    else:
+        name_vi = ITEM_NAMES_VI.get(sold_item, sold_item)
     display_item_name = f"{name_vi} {star_str}".strip()
 
     # Đẩy Popup Toast thông báo bán hàng
@@ -532,83 +604,124 @@ def render_shipping_bin_overlay(screen: pygame.Surface, game: Any) -> None:
     font = getattr(game, "font_xs", None) or pygame.font.SysFont("Segoe UI", 13, bold=True)
     sim_t = getattr(game, "sim_time", 0.0)
 
-    # 1. Badge tiêu đề Thùng Giao Hàng
-    title_text = "Thùng Bán Nông Sản (+G)"
-    t_surf = font.render(title_text, True, (255, 235, 110))
-    coin_ico = game.vault.scaled("icon_coin", 18, 18)
+    # 0. Vẽ Thùng Gỗ Giao Hàng Nông Trại (Shipping Bin Sprite/Box) ngay tại (sx, sy)
+    bin_w, bin_h = 44, 34
+    bin_rect = pygame.Rect(sx - bin_w // 2, sy - bin_h // 2, bin_w, bin_h)
+    pygame.draw.ellipse(screen, (18, 26, 14, 110), (bin_rect.x - 3, bin_rect.bottom - 7, bin_w + 6, 12))
+    pygame.draw.rect(screen, (124, 76, 36), bin_rect, border_radius=5)
+    pygame.draw.rect(screen, (88, 52, 22), bin_rect, 2, border_radius=5)
+    lid_rect = pygame.Rect(bin_rect.x - 2, bin_rect.y - 4, bin_w + 4, 11)
+    pygame.draw.rect(screen, (156, 98, 46), lid_rect, border_radius=4)
+    pygame.draw.rect(screen, (232, 182, 62), lid_rect, 2, border_radius=4)
+    pygame.draw.circle(screen, (245, 205, 68), (sx, bin_rect.centery + 3), 6)
+    pygame.draw.circle(screen, (120, 78, 18), (sx, bin_rect.centery + 3), 6, 1)
 
-    pad_x = 8
-    badge_w = t_surf.get_width() + (22 if coin_ico else 0) + pad_x * 2
-    badge_h = 24
-    bx = sx - badge_w // 2
-    by = sy - 46
-
-    badge_surf = pygame.Surface((badge_w, badge_h), pygame.SRCALPHA)
-    badge_surf.fill((34, 24, 16, 215))
-    pygame.draw.rect(badge_surf, (222, 168, 52), (0, 0, badge_w, badge_h), 2, border_radius=6)
-    screen.blit(badge_surf, (bx, by))
-
-    off_x = bx + pad_x
-    if coin_ico is not None:
-        screen.blit(coin_ico, (off_x, by + 3))
-        off_x += 20
-    screen.blit(t_surf, (off_x, by + 4))
-
-    # 2. Khung nhắc nhở [E] khi Robot đứng gần <= 72px
-    if dist <= 72.0:
-        prompt_text = "[E] Bán Nông Sản lấy Vàng (G)"
-        bob = int(math.sin(sim_t * 6.0) * 3)
-        p_surf = font.render(prompt_text, True, (255, 255, 255))
-        pw = p_surf.get_width() + 18
-        ph = 22
-        px = sx - pw // 2
-        py = by - 26 + bob
-
-        prompt_surf = pygame.Surface((pw, ph), pygame.SRCALPHA)
-        prompt_surf.fill((28, 122, 54, 230))
-        pygame.draw.rect(prompt_surf, (132, 255, 150), (0, 0, pw, ph), 2, border_radius=5)
-        screen.blit(prompt_surf, (px, py))
-        screen.blit(p_surf, (px + 9, py + 3))
+    # 1. Chỉ hiện nhãn trên Thùng Giao Hàng khi Robot đứng gần <= 115px để không che ruộng lúa bên cạnh
+    if dist <= 115.0:
+        title_text = "[E] Thùng Bán Nông Sản (+G)" if dist <= 72.0 else "Thùng Bán Nông Sản"
+        t_col = (132, 255, 150) if dist <= 72.0 else (255, 235, 110)
+        t_surf = font.render(title_text, True, t_col)
+        badge_w = t_surf.get_width() + 12
+        badge_h = 18
+        bx = sx - badge_w // 2
+        by = sy - 36
+        badge_surf = pygame.Surface((badge_w, badge_h), pygame.SRCALPHA)
+        badge_surf.fill((28, 20, 14, 195))
+        pygame.draw.rect(badge_surf, (222, 168, 52), (0, 0, badge_w, badge_h), 1, border_radius=4)
+        screen.blit(badge_surf, (bx, by))
+        screen.blit(t_surf, (bx + 6, by + 1))
 
 
 # ==============================================================================
-# MỤC 8.7: XƯỞNG NÂNG CẤP ROBOT CỦA THỢ MỘC ROBIN (RobinWorkshopManager)
+# MỤC 8.7: XƯỞNG NÂNG CẤP ĐA CẤP ĐỘ CỦA THỢ MỘC ROBIN (RobinWorkshopManager)
 # ==============================================================================
 
 class RobinWorkshopManager:
     """
     Quản lý Xưởng Nâng Cấp Robot Của Thợ Mộc Robin (Mục 8.7).
-    Cho phép Robot đầu tư Vàng (G) thu được từ Thùng Giao Hàng để mua 3 gói nâng cấp:
-    1. cargo_lv2: Mở rộng khay chứa đồ từ 4 ô lên 6 ô chứa (80G -> 64G khi 3♥).
-    2. fast_harvest: Cánh tay thu hoạch siêu tốc giảm từ 1.5s xuống 0.75s (100G -> 80G khi 3♥).
-    3. social_radar: Radar An Toàn HRI tự động bật chế độ đi chậm khi cách người bất kỳ < 1.25m
-       hoặc < 1.65m đối với Người Cao Tuổi & Trẻ Nhỏ (120G -> 96G khi 3♥).
+    Hệ thống nâng cấp Đa Cấp Độ (5 Hạng Mục × 3 Cấp Lv.1 -> Lv.2 -> Lv.3 + Gói Bảo Dưỡng/Siêu Nạp Lặp Lại):
+    1. cargo_lv2: Khay Hàng & Khoang Lạnh Mở Rộng (6/7/8 ô & +10%/+25% giá bán nông sản).
+    2. fast_harvest: Cánh Tay Thu Hoạch & Câu Cá Siêu Tốc (0.75s/0.50s/0.35s & hỗ trợ câu cá).
+    3. social_radar: Radar An Toàn HRI & Đệm Từ Trường (phanh an toàn 1.25m/1.65m & tự hồi An Tâm HRI).
+    4. battery_pack: Lõi Pin Năng Lượng Cao & Pin Mặt Trời (130%/160%/200% Pin & tự sạc ban ngày).
+    5. agv_upgrade: Mô-đun Đồng Hành Xe Kéo AGV Turbo (6/8/10 ô chứa & thưởng Logistics +20%/+30%/+45%).
     """
 
     UPGRADES_CONFIG = [
         {
             "id": "cargo_lv2",
-            "name": "Khay Hàng Mở Rộng (4 -> 6 Ô)",
-            "price": 80,
-            "desc": "Tăng dung lượng khay chứa đồ từ 4 ô lên 6 ô chứa.",
+            "name": "Khay Hàng & Khoang Lạnh Mở Rộng",
+            "price": 110,
+            "prices": [110, 240, 420],
+            "max_level": 3,
+            "desc": "Mở rộng khay chứa đồ từ 4 lên 6/7/8 ô & Khoang lạnh bảo quản tăng giá bán.",
+            "level_descs": [
+                "Lv.1: Mở rộng khay chứa đồ từ 4 lên 6 ô.",
+                "Lv.2: Mở rộng khay chứa đồ lên 7 ô + Khoang mát (+10% giá bán nông sản).",
+                "Lv.3: Mở rộng khay chứa đồ lên 8 ô + Khoang lạnh (+25% giá bán nông sản).",
+            ],
             "icon": "icon_parcel",
             "key_str": "1",
         },
         {
             "id": "fast_harvest",
-            "name": "Cánh Tay Thu Hoạch Siêu Tốc (1.5s -> 0.75s)",
-            "price": 100,
-            "desc": "Gia tốc cánh tay: thu hoạch nông sản & hái quả nhanh gấp đôi.",
+            "name": "Cánh Tay Thu Hoạch & Câu Cá Siêu Tốc",
+            "price": 130,
+            "prices": [130, 260, 450],
+            "max_level": 3,
+            "desc": "Giảm thời gian thu hoạch từ 1.5s xuống 0.75s/0.50s/0.35s & hỗ trợ câu cá.",
+            "level_descs": [
+                "Lv.1: Giảm thời gian thu hoạch từ 1.5s xuống 0.75s.",
+                "Lv.2: Thu hoạch siêu tốc 0.50s + tăng nhẹ tỉ lệ nông sản đạt Sao.",
+                "Lv.3: Thu hoạch tức thì 0.35s + hỗ trợ giữ thanh câu cá dễ hơn.",
+            ],
             "icon": "strawberry",
             "key_str": "2",
         },
         {
             "id": "social_radar",
-            "name": "Radar An Toàn HRI (Tự Giảm Tốc Gần Người)",
-            "price": 120,
-            "desc": "Tự động đi chậm cách người lớn 1.25m; mở rộng 1.65m với người già & trẻ nhỏ.",
+            "name": "Radar An Toàn HRI & Đệm Từ Trường",
+            "price": 150,
+            "prices": [150, 300, 480],
+            "max_level": 3,
+            "desc": "Tự động đi chậm cách người lớn 1.25m (người già & trẻ nhỏ 1.65m) & hồi An Tâm HRI.",
+            "level_descs": [
+                "Lv.1: Tự động đi chậm cách người lớn 1.25m (người già & trẻ nhỏ 1.65m).",
+                "Lv.2: Cảm biến HRI nhạy hơn + duy trì độ An Tâm HRI cao khi đi gần dân làng.",
+                "Lv.3: Phanh Đệm Từ Trường tối tân + hồi phục nhẹ độ An Tâm HRI theo thời gian.",
+            ],
             "icon": "icon_warning",
             "key_str": "3",
+        },
+        {
+            "id": "battery_pack",
+            "name": "Lõi Pin Năng Lượng Cao & Pin Mặt Trời",
+            "price": 160,
+            "prices": [160, 320, 520],
+            "max_level": 3,
+            "desc": "Tăng dung lượng Pin tối đa lên 130%/160%/200% & tự sạc năng lượng mặt trời.",
+            "level_descs": [
+                "Lv.1: Tăng dung lượng Pin tối đa lên 130% & sạc dự phòng ngay +30% Pin.",
+                "Lv.2: Tăng dung lượng Pin tối đa lên 160% & sạc dự phòng ngay +40% Pin.",
+                "Lv.3: Pin Mặt Trời Nano: Dung lượng Pin 200% & tự hồi nhẹ Pin ban ngày!",
+            ],
+            "icon": "iridium_ore",
+            "key_str": "4",
+        },
+        {
+            "id": "agv_upgrade",
+            "name": "Mô-đun Đồng Hành Xe Kéo AGV Turbo",
+            "price": 180,
+            "prices": [180, 350, 550],
+            "max_level": 3,
+            "desc": "Mở rộng thùng Xe Kéo AGV từ 4 lên 6/8/10 ô chứa & tăng thưởng Logistics.",
+            "level_descs": [
+                "Lv.1: Mở rộng thùng Xe Kéo AGV từ 4 lên 6 ô chứa & thưởng Logistics +20%.",
+                "Lv.2: Mở rộng thùng Xe Kéo AGV lên 8 ô chứa & thưởng Logistics +30%.",
+                "Lv.3: Mở rộng thùng Xe Kéo AGV lên 10 ô chứa & thưởng Logistics +45%.",
+            ],
+            "icon": "carrot",
+            "key_str": "5",
         },
     ]
 
@@ -618,9 +731,26 @@ class RobinWorkshopManager:
             "cargo_lv2": False,
             "fast_harvest": False,
             "social_radar": False,
+            "battery_pack": False,
+            "agv_upgrade": False,
         }
+        self.upgrade_levels: dict[str, int] = {k: 0 for k in self.bought_status}
         self.row_rects: list[pygame.Rect] = []
         self.close_btn_rect: pygame.Rect = pygame.Rect(0, 0, 0, 0)
+
+    def _sync_levels_from_bought(self) -> None:
+        """
+        Đồng bộ tương thích ngược hai chiều giữa bought_status (bool) và upgrade_levels (int 0..3):
+        - Nếu code bên ngoài hoặc file save/test gán trực tiếp bought_status[k] = True mà upgrade_levels[k] == 0,
+          tự động coi upgrade_levels[k] = 1.
+        - Ngược lại, nếu upgrade_levels[k] >= 1 thì bought_status[k] = True.
+        """
+        all_keys = set(self.bought_status.keys()) | set(self.upgrade_levels.keys())
+        for k in all_keys:
+            if self.bought_status.get(k, False) and self.upgrade_levels.get(k, 0) == 0:
+                self.upgrade_levels[k] = 1
+            elif self.upgrade_levels.get(k, 0) >= 1:
+                self.bought_status[k] = True
 
     def toggle(self) -> None:
         """Đóng/Mở bảng nâng cấp Xưởng Robin."""
@@ -645,79 +775,139 @@ class RobinWorkshopManager:
         ratio = self.get_discount_ratio(game)
         return int(round(base_price * ratio))
 
+    def buy_maintenance_pack(self, game: Any) -> bool:
+        """
+        Thực hiện 'Gói Bảo Dưỡng & Siêu Nạp Pin Toàn Diện (100G)' lặp lại không giới hạn:
+        - Trừ 100G, hồi ngay +50% Pin cho game.robot.battery, hồi comfort_score = 100.0,
+          cộng +35đ điểm cống hiến, báo banner nâng cấp bảo dưỡng thành công!
+        """
+        maint_price = 100
+        current_gold = getattr(game, "gold", 0)
+        if current_gold < maint_price:
+            if hasattr(game, "set_banner"):
+                game.set_banner(
+                    f"Không đủ Vàng để Bảo Dưỡng & Siêu Nạp Pin! Cần {maint_price}G (Hiện có: {current_gold}G).",
+                    (255, 135, 100),
+                )
+            return False
+
+        game.gold -= maint_price
+        if hasattr(game, "robot") and hasattr(game.robot, "battery"):
+            max_bat = float(getattr(game.robot, "max_battery", 100.0))
+            game.robot.battery = min(max_bat, float(game.robot.battery) + 50.0)
+        if hasattr(game, "comfort_score"):
+            game.comfort_score = 100.0
+        if hasattr(game, "add_score"):
+            game.add_score(35, "Bảo dưỡng & Siêu nạp Pin Toàn Diện")
+
+        audio = getattr(game, "audio", None)
+        if audio is not None and hasattr(audio, "play_sfx"):
+            audio.play_sfx("gold")
+
+        if hasattr(game, "set_banner"):
+            game.set_banner(
+                "BẢO DƯỠNG & SIÊU NẠP PIN THÀNH CÔNG (-100G): Hồi ngay +50% Pin, 100% An Tâm HRI & +35đ Cống hiến!",
+                (96, 255, 162),
+            )
+        return True
+
     def buy_upgrade(self, game: Any, idx: int) -> bool:
         """
-        Thực hiện mua gói nâng cấp theo chỉ số idx (0, 1, 2).
-        Kiểm tra số Vàng của người chơi và áp dụng hiệu ứng vĩnh viễn (kèm giảm giá 20% nếu 3♥ với Robin).
+        Thực hiện mua gói nâng cấp theo chỉ số idx (0..4) từ Lv.0 -> Lv.1 -> Lv.2 -> Lv.3,
+        hoặc Gói Bảo Dưỡng & Siêu Nạp Pin Toàn Diện (100G) khi đã đạt Max (Lv.3) hoặc bấm phím [6] (idx == 5).
         """
+        self._sync_levels_from_bought()
+
+        if idx == 5:
+            return self.buy_maintenance_pack(game)
+
         if idx < 0 or idx >= len(self.UPGRADES_CONFIG):
             return False
 
         up = self.UPGRADES_CONFIG[idx]
         item_id = up["id"]
+        max_lv = int(up.get("max_level", 3))
+        cur_lv = int(self.upgrade_levels.get(item_id, 0))
 
-        if self.bought_status.get(item_id, False):
-            if hasattr(game, "set_banner"):
-                game.set_banner(
-                    f"Bạn đã sở hữu nâng cấp '{up['name']}' rồi!",
-                    (255, 210, 120),
-                )
-            return False
+        # Nếu hạng mục đã đạt Lv.3 (Max) -> chuyển sang Gói Bảo Dưỡng & Siêu Nạp Pin Toàn Diện (100G)
+        if cur_lv >= max_lv:
+            return self.buy_maintenance_pack(game)
 
+        next_lv = cur_lv + 1
+        prices_list = up.get("prices", [up["price"]] * max_lv)
+        base_price = int(prices_list[cur_lv])
         current_gold = getattr(game, "gold", 0)
-        price = self.get_upgrade_price(game, up["price"])
+        price = self.get_upgrade_price(game, base_price)
 
         if current_gold < price:
             if hasattr(game, "set_banner"):
                 game.set_banner(
-                    f"Không đủ Vàng! Cần {price}G (Hiện có: {current_gold}G). Hãy bán thêm nông sản tại Thùng Giao Hàng!",
+                    f"Không đủ Vàng để nâng cấp {up['name']} (Lv.{next_lv})! Cần {price}G (Hiện có: {current_gold}G).",
                     (255, 115, 100),
                 )
             return False
 
-        # Trừ vàng & đánh dấu đã sở hữu
+        # Trừ Vàng & nâng cấp cấp độ
         game.gold -= price
+        self.upgrade_levels[item_id] = next_lv
         self.bought_status[item_id] = True
 
-        # Áp dụng hiệu ứng ngay lập tức
-        if item_id == "cargo_lv2":
-            game.robot.max_inventory = 6
-        elif item_id == "fast_harvest":
-            game.robot.harvest_duration = 0.75
-        elif item_id == "social_radar":
-            setattr(game, "has_social_radar", True)
+        # Áp dụng hiệu ứng nội tại ngay lập tức
+        self.apply_passive_effects(game)
+
+        # Thưởng sạc dự phòng tức thì khi mua nâng cấp Lõi Pin (battery_pack)
+        if item_id == "battery_pack" and hasattr(game, "robot") and hasattr(game.robot, "battery"):
+            instant_charge = 30.0 if next_lv == 1 else (40.0 if next_lv == 2 else 50.0)
+            max_bat = float(getattr(game.robot, "max_battery", 130.0))
+            game.robot.battery = min(max_bat, float(game.robot.battery) + instant_charge)
 
         if hasattr(game, "add_score"):
-            game.add_score(60, f"Nâng cấp: {up['name']}")
+            game.add_score(60 * next_lv, f"Nâng cấp Lv.{next_lv}: {up['name']}")
+
+        audio = getattr(game, "audio", None)
+        if audio is not None and hasattr(audio, "play_sfx"):
+            audio.play_sfx("gold")
+
+        state_obj = getattr(game, "state", None)
+        if state_obj is not None and hasattr(state_obj, "check_achievements_and_certifications"):
+            state_obj.check_achievements_and_certifications(game)
 
         if hasattr(game, "set_banner"):
+            lv_descs = up.get("level_descs", [up["desc"]] * max_lv)
+            effect_txt = lv_descs[min(next_lv - 1, len(lv_descs) - 1)]
             game.set_banner(
-                f"NÂNG CẤP THÀNH CÔNG: {up['name']}! Hiệu ứng đã kích hoạt vĩnh viễn.",
+                f"NÂNG CẤP THÀNH CÔNG [{up['name']} — Lv.{next_lv}/{max_lv}]: {effect_txt}",
                 (96, 255, 142),
             )
         return True
 
     def apply_passive_effects(self, game: Any) -> None:
         """
-        Duy trì các hiệu ứng nội tại của các gói nâng cấp đã mua:
-        - Giữ max_inventory = 6 nếu mua cargo_lv2.
-        - Giữ harvest_duration = 0.75 nếu mua fast_harvest.
-        - Radar An Toàn HRI Phân Biệt Người Già & Trẻ Nhỏ (Mục 8.7):
-          Khi đã sở hữu social_radar, kiểm tra từng NPC xung quanh:
-          + Người Cao Tuổi hoặc Trẻ Nhỏ ('Bà Evelyn', 'Ông George', 'Thị trưởng Lewis',
-            'Ngư phủ Willy', 'Bé Jas', 'Chàng mèo Leo' hoặc age_group in ('elder', 'child')):
-            khoảng cách phanh đi chậm mở rộng lên 1.65m.
-          + Người lớn bình thường: khoảng cách phanh đi chậm là 1.25m.
+        Duy trì các hiệu ứng nội tại của các gói nâng cấp đa cấp độ (Lv.1 -> Lv.3):
+        - Gọi _sync_levels_from_bought() để tương thích ngược tuyệt đối.
+        - cargo_lv2: Lv.1 -> max_inventory = 6, Lv.2 -> 7, Lv.3 -> 8.
+        - fast_harvest: Lv.1 -> harvest_duration = 0.75, Lv.2 -> 0.50, Lv.3 -> 0.35.
+        - social_radar: Lv.1+ bật radar_slow_active khi gần NPC; Lv.3 hồi nhẹ comfort_score +0.02 mỗi frame.
+        - battery_pack: Lv.1 -> max_battery = 130.0, Lv.2 -> 160.0, Lv.3 -> 200.0 (& tự hồi nhẹ Pin ban ngày).
+        - agv_upgrade: Lv.1 -> agv.max_cargo = 6, Lv.2 -> 8, Lv.3 -> 10.
         """
-        if self.bought_status.get("cargo_lv2", False):
-            if game.robot.max_inventory < 6:
-                game.robot.max_inventory = 6
+        self._sync_levels_from_bought()
 
-        if self.bought_status.get("fast_harvest", False):
-            if game.robot.harvest_duration > 0.75:
-                game.robot.harvest_duration = 0.75
+        cargo_lv = int(self.upgrade_levels.get("cargo_lv2", 0))
+        if cargo_lv >= 1:
+            target_inv = 8 if cargo_lv >= 3 else (7 if cargo_lv == 2 else 6)
+            if game.robot.max_inventory < target_inv:
+                game.robot.max_inventory = target_inv
 
-        if self.bought_status.get("social_radar", False):
+        fast_lv = int(self.upgrade_levels.get("fast_harvest", 0))
+        if fast_lv >= 1:
+            target_dur = 0.35 if fast_lv >= 3 else (0.50 if fast_lv == 2 else 0.75)
+            if game.robot.harvest_duration > target_dur:
+                game.robot.harvest_duration = target_dur
+
+        radar_lv = int(self.upgrade_levels.get("social_radar", 0))
+        if radar_lv >= 1:
+            setattr(game, "has_social_radar", True)
             active_npcs = (
                 game.interior_npcs
                 if getattr(game, "in_interior", False)
@@ -725,7 +915,7 @@ class RobinWorkshopManager:
             )
             near_npc = False
 
-            # Danh sách Người Cao Tuổi & Trẻ Nhỏ cần bảo vệ an toàn tuyệt đối
+            # Danh sách dự phòng Người Cao Tuổi & Trẻ Nhỏ nếu thiếu dữ liệu JSON
             vulnerable_names = {
                 "Bà Evelyn",
                 "Ông George",
@@ -737,31 +927,66 @@ class RobinWorkshopManager:
             npcs_db = getattr(getattr(game, "state", None), "npcs_db", {})
 
             for npc in active_npcs:
+                if not getattr(game, "in_interior", False) and getattr(npc, "is_home_at_night", False):
+                    continue
                 npc_name = getattr(npc, "name", "")
                 age_group = ""
+                db_radius_m = 0.0
                 if isinstance(npcs_db, dict) and npc_name in npcs_db:
                     npc_info = npcs_db[npc_name]
                     if isinstance(npc_info, dict):
-                        age_group = npc_info.get("age_group", "")
+                        age_group = str(npc_info.get("age_group", ""))
+                        db_radius_m = float(npc_info.get("safety_radius_m", 0.0) or 0.0)
 
-                is_vulnerable = (npc_name in vulnerable_names) or (age_group in ("elder", "child"))
+                is_vulnerable = (
+                    (npc_name in vulnerable_names)
+                    or (age_group in ("elder", "child", "Người Cao Tuổi", "Trẻ Nhỏ"))
+                )
 
-                # Mở rộng khoảng cách an toàn: 1.65m đối với Người Già / Trẻ Nhỏ, 1.25m với người lớn
-                safe_dist_m = 1.65 if is_vulnerable else 1.25
+                # Đọc bán kính an toàn từ npcs.json (cộng biên phanh sớm 0.30m), ưu tiên 1.65m cho người già/trẻ nhỏ
+                base_safe_m = 1.65 if is_vulnerable else 1.25
+                safe_dist_m = max(base_safe_m, db_radius_m + 0.30) if db_radius_m > 0.0 else base_safe_m
                 safe_dist_px = m_to_px(safe_dist_m)
 
                 if math.hypot(npc.x - game.robot.x, npc.y - game.robot.y) < safe_dist_px:
                     near_npc = True
                     break
 
+            game.robot.radar_slow_active = near_npc
             if near_npc:
                 game.robot.is_slow_active = True
+                if radar_lv >= 2 and hasattr(game, "comfort_score"):
+                    game.comfort_score = min(100.0, float(getattr(game, "comfort_score", 100.0)) + 0.01)
+            if radar_lv >= 3 and hasattr(game, "comfort_score"):
+                game.comfort_score = min(100.0, float(getattr(game, "comfort_score", 100.0)) + 0.02)
+        else:
+            game.robot.radar_slow_active = False
+
+        bat_lv = int(self.upgrade_levels.get("battery_pack", 0))
+        if bat_lv >= 1:
+            target_max_bat = 200.0 if bat_lv >= 3 else (160.0 if bat_lv == 2 else 130.0)
+            if getattr(game.robot, "max_battery", 100.0) < target_max_bat:
+                game.robot.max_battery = target_max_bat
+            if bat_lv >= 3 and not getattr(game, "in_interior", False):
+                is_daytime = not bool(getattr(game, "is_night", False))
+                if is_daytime and hasattr(game.robot, "battery"):
+                    game.robot.battery = min(
+                        float(game.robot.max_battery),
+                        float(game.robot.battery) + 0.003,
+                    )
+
+        agv_lv = int(self.upgrade_levels.get("agv_upgrade", 0))
+        if agv_lv >= 1:
+            target_cargo = 10 if agv_lv >= 3 else (8 if agv_lv == 2 else 6)
+            for agv in getattr(game, "agvs", []):
+                if getattr(agv, "max_cargo", 4) < target_cargo:
+                    agv.max_cargo = target_cargo
 
     def handle_event(self, event: pygame.event.Event, game: Any) -> bool:
         """
         Bắt sự kiện bàn phím và chuột khi tương tác với Xưởng Robin:
         - Bấm [U] để đóng/mở bảng nâng cấp.
-        - Khi mở: [1, 2, 3] để mua tương ứng, [ESC] để đóng, click chuột vào dòng nâng cấp hoặc nút [X].
+        - Khi mở: [1..5] để mua nâng cấp tương ứng, [6] để mua gói Bảo Dưỡng & Siêu Nạp Pin, [ESC] để đóng.
         - Trả về True nếu sự kiện được modal xử lý (nuốt sự kiện).
         """
         if event.type == pygame.KEYDOWN:
@@ -782,6 +1007,15 @@ class RobinWorkshopManager:
                 if event.key in (pygame.K_3, pygame.K_KP3):
                     self.buy_upgrade(game, 2)
                     return True
+                if event.key in (pygame.K_4, pygame.K_KP4):
+                    self.buy_upgrade(game, 3)
+                    return True
+                if event.key in (pygame.K_5, pygame.K_KP5):
+                    self.buy_upgrade(game, 4)
+                    return True
+                if event.key in (pygame.K_6, pygame.K_KP6):
+                    self.buy_maintenance_pack(game)
+                    return True
                 return True  # Nuốt phím để robot không di chuyển khi đang mở modal
 
         elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and self.open:
@@ -800,14 +1034,16 @@ class RobinWorkshopManager:
 
     def render_modal(self, screen: pygame.Surface, game: Any) -> None:
         """
-        Vẽ bảng Xưởng Nâng Cấp Robot giữa màn hình khi self.open == True.
-        Thiết kế bảng gỗ Robin chuẩn phong cách Stardew Valley:
+        Vẽ bảng Xưởng Nâng Cấp Robot Đa Cấp Độ giữa màn hình khi self.open == True.
+        Thiết kế bảng gỗ Robin chuẩn phong cách Stardew Valley (700x520):
         - Header: Tiêu đề xưởng, nhãn giảm giá 20% khi 3♥ với Robin, và Vàng hiện có.
-        - Body: 3 dòng nâng cấp có phím tắt [1], [2], [3], icon, mô tả, nút mua/đã sở hữu.
-        - Footer: Hướng dẫn đóng/mở bằng [U] hoặc [ESC].
+        - Body: 5 dòng nâng cấp đa cấp độ (Lv.0/3 -> Lv.3/3) có phím tắt [1]..[5], icon, mô tả, nút nâng cấp / bảo dưỡng.
+        - Footer: Hướng dẫn nâng cấp, Gói Bảo Dưỡng [6] (100G) và đóng bằng [U] hoặc [ESC].
         """
         if not self.open:
             return
+
+        self._sync_levels_from_bought()
 
         # Kiểm tra đặc quyền mốc 3 ♥ với Thợ mộc Robin
         has_discount = (self.get_discount_ratio(game) < 1.0)
@@ -817,8 +1053,8 @@ class RobinWorkshopManager:
         overlay.fill((12, 10, 16, 175))
         screen.blit(overlay, (0, 0))
 
-        # 2. Khung hộp thoại chính giữa màn hình (660x424)
-        mw, mh = 660, 424
+        # 2. Khung hộp thoại chính giữa màn hình (700x520)
+        mw, mh = 700, 520
         mx = (SCREEN_W - mw) // 2
         my = (SCREEN_H - mh) // 2
         modal_rect = pygame.Rect(mx, my, mw, mh)
@@ -840,25 +1076,25 @@ class RobinWorkshopManager:
 
         # 3. Header: Tiêu đề xưởng & Nhãn giảm giá 20% khi 3♥
         header_surf = font_md.render(
-            "XƯỞNG NÂNG CẤP ROBOT — THỢ MỘC ROBIN",
+            "XƯỞNG NÂNG CẤP CÔNG NGHỆ ĐA CẤP — THỢ MỘC ROBIN",
             True,
             (255, 228, 85),
         )
-        screen.blit(header_surf, (mx + 28, my + 18))
+        screen.blit(header_surf, (mx + 24, my + 16))
 
         if has_discount:
             discount_lbl = font_xs.render("[Đã giảm 20% nhờ 3♥ với Robin!]", True, (120, 255, 140))
-            sub_text = "Đặc quyền bạn thân Robin: Giảm 20% toàn bộ gói nâng cấp công nghệ!"
-            screen.blit(discount_lbl, (mx + 28, my + 44))
+            sub_text = "Đặc quyền bạn thân Robin: Giảm 20% mọi cấp nâng cấp!"
+            screen.blit(discount_lbl, (mx + 24, my + 42))
             sub_surf = font_xs.render(sub_text, True, (215, 245, 220))
-            screen.blit(sub_surf, (mx + 28 + discount_lbl.get_width() + 10, my + 44))
+            screen.blit(sub_surf, (mx + 24 + discount_lbl.get_width() + 10, my + 42))
         else:
             sub_surf = font_xs.render(
-                "Nâng cấp công nghệ FarmBot bằng Vàng (G) thu được từ Thùng Giao Hàng",
+                "Nâng cấp 5 hạng mục (Lv.1 -> Lv.3) hoặc Bảo dưỡng Siêu nạp Pin [6] (100G)",
                 True,
                 (215, 195, 175),
             )
-            screen.blit(sub_surf, (mx + 28, my + 46))
+            screen.blit(sub_surf, (mx + 24, my + 42))
 
         # Badge số Vàng hiện có
         current_gold = getattr(game, "gold", 0)
@@ -866,8 +1102,8 @@ class RobinWorkshopManager:
         g_val_surf = font_sm.render(gold_txt, True, (255, 235, 110))
         coin_ico = game.vault.scaled("icon_coin", 20, 20)
         gw = g_val_surf.get_width() + 40
-        gx = mx + mw - gw - 60
-        gy = my + 22
+        gx = mx + mw - gw - 58
+        gy = my + 18
         g_badge = pygame.Rect(gx, gy, gw, 26)
         pygame.draw.rect(screen, (28, 18, 12), g_badge, border_radius=6)
         pygame.draw.rect(screen, (218, 165, 32), g_badge, width=1, border_radius=6)
@@ -876,7 +1112,7 @@ class RobinWorkshopManager:
         screen.blit(g_val_surf, (gx + 30, gy + 4))
 
         # Nút đóng [X]
-        self.close_btn_rect = pygame.Rect(mx + mw - 46, my + 18, 30, 30)
+        self.close_btn_rect = pygame.Rect(mx + mw - 44, my + 16, 28, 28)
         pygame.draw.rect(screen, (168, 42, 42), self.close_btn_rect, border_radius=6)
         pygame.draw.rect(screen, (235, 95, 95), self.close_btn_rect, width=2, border_radius=6)
         x_lbl = font_sm.render("X", True, (255, 255, 255))
@@ -889,31 +1125,49 @@ class RobinWorkshopManager:
         )
 
         # Đường kẻ phân cách
-        pygame.draw.line(screen, (120, 82, 50), (mx + 20, my + 80), (mx + mw - 20, my + 80), 2)
+        pygame.draw.line(screen, (120, 82, 50), (mx + 20, my + 70), (mx + mw - 20, my + 70), 2)
 
-        # 4. Body: 3 dòng nâng cấp
+        # 4. Body: 5 dòng nâng cấp đa cấp độ (Lv.0/3 -> Lv.3/3)
         self.row_rects.clear()
-        start_y = my + 92
-        row_h = 82
-        row_gap = 12
+        start_y = my + 80
+        row_h = 68
+        row_gap = 8
 
         mouse_pos = pygame.mouse.get_pos()
 
         for idx, up in enumerate(self.UPGRADES_CONFIG):
             ry = start_y + idx * (row_h + row_gap)
-            r_rect = pygame.Rect(mx + 24, ry, mw - 48, row_h)
+            r_rect = pygame.Rect(mx + 20, ry, mw - 40, row_h)
             self.row_rects.append(r_rect)
 
             item_id = up["id"]
-            is_bought = self.bought_status.get(item_id, False)
-            price = self.get_upgrade_price(game, up["price"])
+            max_lv = int(up.get("max_level", 3))
+            cur_lv = int(self.upgrade_levels.get(item_id, 0))
+            is_maxed = (cur_lv >= max_lv)
+            prices_list = up.get("prices", [up["price"]] * max_lv)
+            lv_descs = up.get("level_descs", [up["desc"]] * max_lv)
+
+            if is_maxed:
+                base_next_price = 100
+                price = 100
+                desc_text = lv_descs[-1]
+            else:
+                base_next_price = int(prices_list[cur_lv])
+                price = self.get_upgrade_price(game, base_next_price)
+                desc_text = lv_descs[cur_lv]
+                if has_discount:
+                    desc_text += f" (Giảm 20%: {base_next_price}G->{price}G)"
+
             can_afford = current_gold >= price
             is_hover = r_rect.collidepoint(mouse_pos)
 
-            # Nền hàng
-            if is_bought:
-                row_bg = (34, 46, 32)
-                row_border = (68, 158, 82)
+            # Nền hàng theo cấp độ
+            if is_maxed:
+                row_bg = (30, 50, 34) if not is_hover else (38, 64, 42)
+                row_border = (82, 198, 102)
+            elif cur_lv > 0:
+                row_bg = (42, 34, 22) if not is_hover else (58, 44, 28)
+                row_border = (218, 175, 62) if not is_hover else (250, 210, 82)
             elif is_hover:
                 row_bg = (58, 38, 24)
                 row_border = (245, 195, 68)
@@ -924,11 +1178,11 @@ class RobinWorkshopManager:
             pygame.draw.rect(screen, row_bg, r_rect, border_radius=8)
             pygame.draw.rect(screen, row_border, r_rect, width=2, border_radius=8)
 
-            # Phím tắt [1], [2], [3]
-            key_rect = pygame.Rect(r_rect.x + 12, r_rect.y + 14, 28, 28)
+            # Phím tắt [1]..[5]
+            key_rect = pygame.Rect(r_rect.x + 10, r_rect.y + 10, 26, 26)
             pygame.draw.rect(screen, (22, 14, 10), key_rect, border_radius=4)
             pygame.draw.rect(screen, (218, 165, 32), key_rect, width=1, border_radius=4)
-            k_lbl = font_sm.render(f"[{up['key_str']}]", True, (255, 235, 110))
+            k_lbl = font_xs.render(f"[{up['key_str']}]", True, (255, 235, 110))
             screen.blit(
                 k_lbl,
                 (
@@ -937,48 +1191,54 @@ class RobinWorkshopManager:
                 ),
             )
 
+            # Thanh 3 nấc cấp độ dưới phím tắt
+            for lv_i in range(max_lv):
+                pip_rect = pygame.Rect(r_rect.x + 9 + lv_i * 10, r_rect.y + 42, 8, 14)
+                pip_col = (95, 235, 125) if lv_i < cur_lv else (55, 42, 32)
+                pygame.draw.rect(screen, pip_col, pip_rect, border_radius=2)
+                pygame.draw.rect(screen, (165, 130, 85), pip_rect, width=1, border_radius=2)
+
             # Biểu tượng nâng cấp
-            icon_ico = game.vault.scaled(up["icon"], 36, 36)
+            icon_ico = game.vault.scaled(up["icon"], 34, 34)
             if icon_ico is not None:
-                screen.blit(icon_ico, (r_rect.x + 50, r_rect.y + 10))
+                screen.blit(icon_ico, (r_rect.x + 46, r_rect.y + 16))
             else:
                 pygame.draw.circle(
                     screen,
                     (218, 165, 32),
-                    (r_rect.x + 68, r_rect.y + 28),
-                    16,
+                    (r_rect.x + 63, r_rect.y + 33),
+                    15,
                 )
 
-            # Tên và mô tả nâng cấp
-            name_color = (255, 248, 225) if not is_bought else (168, 245, 178)
-            name_surf = font_sm.render(up["name"], True, name_color)
-            screen.blit(name_surf, (r_rect.x + 96, r_rect.y + 12))
+            # Tên và cấp độ nâng cấp
+            lv_badge = f"Lv.{cur_lv}/{max_lv} (MAX)" if is_maxed else f"Lv.{cur_lv}/{max_lv}"
+            name_color = (155, 250, 175) if is_maxed else ((255, 238, 150) if cur_lv > 0 else (255, 248, 225))
+            name_surf = font_sm.render(f"{up['name']}  [{lv_badge}]", True, name_color)
+            screen.blit(name_surf, (r_rect.x + 88, r_rect.y + 10))
 
-            desc_text = up["desc"]
-            if has_discount and not is_bought:
-                desc_text += f" (Giảm 20%: {up['price']}G -> {price}G)"
-            desc_surf = font_xs.render(desc_text, True, (200, 185, 168))
-            screen.blit(desc_surf, (r_rect.x + 96, r_rect.y + 38))
+            desc_surf = font_xs.render(desc_text, True, (205, 192, 175))
+            screen.blit(desc_surf, (r_rect.x + 88, r_rect.y + 36))
 
             # Nút trạng thái bên phải
-            btn_w, btn_h = 132, 34
-            btn_x = r_rect.right - btn_w - 14
+            btn_w, btn_h = 152, 34
+            btn_x = r_rect.right - btn_w - 12
             btn_y = r_rect.centery - btn_h // 2
             btn_rect = pygame.Rect(btn_x, btn_y, btn_w, btn_h)
 
-            if is_bought:
-                pygame.draw.rect(screen, (28, 92, 45), btn_rect, border_radius=6)
-                pygame.draw.rect(screen, (92, 228, 122), btn_rect, width=2, border_radius=6)
-                status_lbl = font_xs.render("ĐÃ SỞ HỮU", True, (215, 255, 225))
+            if is_maxed:
+                b_col = (28, 102, 55) if can_afford else (42, 62, 46)
+                pygame.draw.rect(screen, b_col, btn_rect, border_radius=6)
+                pygame.draw.rect(screen, (98, 235, 132), btn_rect, width=2, border_radius=6)
+                status_lbl = font_xs.render("BẢO DƯỠNG (100G)", True, (220, 255, 230))
             elif can_afford:
                 b_color = (195, 125, 24) if not is_hover else (225, 148, 32)
                 pygame.draw.rect(screen, b_color, btn_rect, border_radius=6)
                 pygame.draw.rect(screen, (255, 218, 88), btn_rect, width=2, border_radius=6)
-                status_lbl = font_xs.render(f"MUA ({price}G)", True, (255, 255, 255))
+                status_lbl = font_xs.render(f"NÂNG CẤP Lv.{cur_lv + 1} ({price}G)", True, (255, 255, 255))
             else:
                 pygame.draw.rect(screen, (58, 48, 42), btn_rect, border_radius=6)
                 pygame.draw.rect(screen, (98, 88, 80), btn_rect, width=1, border_radius=6)
-                status_lbl = font_xs.render(f"CẦN {price}G", True, (175, 165, 155))
+                status_lbl = font_xs.render(f"Lv.{cur_lv + 1}: CẦN {price}G", True, (175, 165, 155))
 
             screen.blit(
                 status_lbl,
@@ -989,7 +1249,7 @@ class RobinWorkshopManager:
             )
 
         # 5. Footer: Dòng hướng dẫn
-        guide_text = "Bấm [1], [2], [3] hoặc Click Chuột để mua | Bấm phím [U] hoặc [ESC] để đóng cửa sổ"
+        guide_text = "Phím [1]..[5] / Click: Nâng cấp (Lv.1->3) | Phím [6]: Bảo dưỡng & Siêu nạp Pin (100G) | [U]/[ESC]: Đóng"
         guide_surf = font_xs.render(guide_text, True, (225, 195, 145))
         screen.blit(
             guide_surf,

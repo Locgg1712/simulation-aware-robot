@@ -1,11 +1,16 @@
-# Phase 7: Chạy tự động 4 Baselines trên tập Validation & Test
+# Phase 7: Chạy tự động 4 Baselines trên tập Validation, Test & Bản đồ Game FarmBot Town
 import argparse
 import csv
 import json
 from pathlib import Path
 
 from behavior.rule_based_agent import RuleBasedAgent
-from environment.topology import TRAIN_TOPOLOGIES, VAL_TOPOLOGIES, TEST_TOPOLOGIES
+from environment.topology import (
+    GAME_TOPOLOGIES,
+    TRAIN_TOPOLOGIES,
+    VAL_TOPOLOGIES,
+    TEST_TOPOLOGIES,
+)
 from rl.gym_env import ContextAwareNavEnv
 from rl.train_eval import RLPolicyAgent
 from .metrics import EpisodeTracker, aggregate_metrics
@@ -44,6 +49,8 @@ BASELINE_CONFIGS = [
 
 
 def get_topologies_for_split(split: str) -> list[int]:
+    if split == "game":
+        return GAME_TOPOLOGIES
     if split == "train":
         return TRAIN_TOPOLOGIES
     if split == "val":
@@ -59,6 +66,7 @@ def evaluate_single_baseline(
     episodes: int,
     base_seed: int,
     algo: str = "PPO",
+    models_dir: str | Path = "models",
 ) -> dict:
     topologies = get_topologies_for_split(split)
     is_rl = baseline_cfg["type"] == "rl"
@@ -73,14 +81,18 @@ def evaluate_single_baseline(
     env.world.use_social_astar = bool(baseline_cfg["use_social_astar"])
 
     if is_rl:
-        rl_agent = RLPolicyAgent(include_social_context=include_social)
-        loaded = rl_agent.auto_load_default(mode=mode)
+        rl_agent = RLPolicyAgent(
+            algo=algo, include_social_context=include_social, deterministic=True
+        )
+        loaded = rl_agent.auto_load_default(mode=mode, models_dir=models_dir)
         if not loaded:
             print(
                 f"[Cảnh báo] Chưa tìm thấy model đã huấn luyện cho {baseline_cfg['name']}. "
                 f"Đang sử dụng fallback agent để hoàn tất luồng chạy."
             )
-        fallback_rule = RuleBasedAgent(mode="basic" if mode == "no_context" else "social")
+        fallback_rule = RuleBasedAgent(
+            mode="basic" if mode == "no_context" else "social"
+        )
     else:
         rule_agent = RuleBasedAgent(mode=mode)
 
@@ -191,12 +203,21 @@ def run_benchmark_suite(
     seed: int = 2026,
     algo: str = "PPO",
     output_dir: str = "results",
+    models_dir: str | None = None,
 ) -> list[dict]:
     out_path = Path(output_dir)
+    resolved_models_dir = (
+        Path(models_dir) if models_dir else (out_path.parent / "models")
+    )
+    if not resolved_models_dir.exists():
+        resolved_models_dir = Path("models")
+
     all_results: list[dict] = []
 
     print("=" * 80)
-    print(f"[Phase 7] Chạy Benchmark 4 Baselines | Split='{split.upper()}' | Episodes={episodes}")
+    print(
+        f"[Phase 7] Chạy Benchmark 4 Baselines | Split='{split.upper()}' | Episodes={episodes}"
+    )
     print("=" * 80)
 
     for cfg in BASELINE_CONFIGS:
@@ -207,6 +228,7 @@ def run_benchmark_suite(
             episodes=episodes,
             base_seed=seed,
             algo=algo,
+            models_dir=resolved_models_dir,
         )
         all_results.append(res)
 
@@ -220,22 +242,64 @@ def parse_args():
         "--split",
         type=str,
         default="both",
-        choices=["train", "val", "test", "both"],
+        choices=["game", "train", "val", "test", "both", "all"],
     )
     parser.add_argument("--episodes", type=int, default=30)
     parser.add_argument("--seed", type=int, default=2026)
     parser.add_argument("--algo", type=str, default="PPO")
     parser.add_argument("--output-dir", type=str, default="results")
+    parser.add_argument("--models-dir", type=str, default=None)
     return parser.parse_args()
 
 
 def main():
     args = parse_args()
     if args.split == "both":
-        run_benchmark_suite("val", args.episodes, args.seed, args.algo, args.output_dir)
-        run_benchmark_suite("test", args.episodes, args.seed + 5000, args.algo, args.output_dir)
+        run_benchmark_suite(
+            "val", args.episodes, args.seed, args.algo, args.output_dir, args.models_dir
+        )
+        run_benchmark_suite(
+            "test",
+            args.episodes,
+            args.seed + 5000,
+            args.algo,
+            args.output_dir,
+            args.models_dir,
+        )
+    elif args.split == "all":
+        run_benchmark_suite(
+            "game",
+            args.episodes,
+            args.seed,
+            args.algo,
+            args.output_dir,
+            args.models_dir,
+        )
+        run_benchmark_suite(
+            "val",
+            args.episodes,
+            args.seed + 2500,
+            args.algo,
+            args.output_dir,
+            args.models_dir,
+        )
+        run_benchmark_suite(
+            "test",
+            args.episodes,
+            args.seed + 5000,
+            args.algo,
+            args.output_dir,
+            args.models_dir,
+        )
     else:
-        run_benchmark_suite(args.split, args.episodes, args.seed, args.algo, args.output_dir)
+        run_benchmark_suite(
+            args.split,
+            args.episodes,
+            args.seed,
+            args.algo,
+            args.output_dir,
+            args.models_dir,
+        )
 
 
 if __name__ == "__main__":

@@ -344,12 +344,19 @@ class VFXAndTutorialManager:
 
         font_sm = self._get_font(game, "sm")
         font_xs = self._get_font(game, "xs")
-        card_w = 316
-        card_h = 42
+        card_w = 276
+        card_h = 36
+        max_txt_w = card_w - 50
+
+        def _fit_text(fnt: pygame.font.Font, txt: str) -> str:
+            s = str(txt).strip()
+            while len(s) > 6 and fnt.size(s)[0] > max_txt_w:
+                s = s[:-1].rstrip() + "…"
+            return s
 
         for i, toast in enumerate(self.toasts):
-            base_x = 12
-            base_y = SCREEN_H - 108 - i * 48
+            base_x = 10
+            base_y = SCREEN_H - 96 - i * 40
 
             # Hiệu ứng trượt vào (slide-in) 0.2s đầu & mờ dần (fade-out) 0.4s cuối
             t_elapsed = toast.total_time - toast.timer
@@ -382,15 +389,16 @@ class VFXAndTutorialManager:
                 border_radius=8,
             )
 
-            # Icon bên trái thẻ
+            # Icon bên trái thẻ (nếu là icon_ thì lấy trực tiếp từ vault.scaled để không rơi vào fallback icon_parcel)
             icon_drawn = False
             vault = getattr(game, "vault", None)
             if vault is not None:
-                spr = (
-                    vault.get_item_icon(toast.icon_key, 26)
-                    if hasattr(vault, "get_item_icon")
-                    else vault.scaled(toast.icon_key, 26, 26)
-                )
+                if toast.icon_key.startswith("icon_"):
+                    spr = vault.scaled(toast.icon_key, 26, 26)
+                elif hasattr(vault, "get_item_icon"):
+                    spr = vault.get_item_icon(toast.icon_key, 26)
+                else:
+                    spr = vault.scaled(toast.icon_key, 26, 26)
                 if spr is not None:
                     card_surf.blit(spr, (8, (card_h - 26) // 2))
                     icon_drawn = True
@@ -398,15 +406,15 @@ class VFXAndTutorialManager:
             if not icon_drawn:
                 self._draw_toast_fallback_icon(card_surf, toast.icon_key, 21, card_h // 2)
 
-            # Văn bản Title & Subtitle
+            # Văn bản Title & Subtitle (tự động rút gọn gọn trong khung thẻ)
             text_x = 42
             if toast.subtitle:
-                t_lbl = font_xs.render(toast.title, True, (255, 246, 220))
-                s_lbl = font_xs.render(toast.subtitle, True, (215, 230, 245))
+                t_lbl = font_xs.render(_fit_text(font_xs, toast.title), True, (255, 246, 220))
+                s_lbl = font_xs.render(_fit_text(font_xs, toast.subtitle), True, (215, 230, 245))
                 card_surf.blit(t_lbl, (text_x, 4))
-                card_surf.blit(s_lbl, (text_x, 21))
+                card_surf.blit(s_lbl, (text_x, 20))
             else:
-                t_lbl = font_sm.render(toast.title, True, (255, 246, 220))
+                t_lbl = font_sm.render(_fit_text(font_sm, toast.title), True, (255, 246, 220))
                 card_surf.blit(t_lbl, (text_x, (card_h - t_lbl.get_height()) // 2))
 
             screen.blit(card_surf, (cur_x, base_y))
@@ -483,41 +491,23 @@ class VFXAndTutorialManager:
                 audio.play_sfx("gold")
 
     def draw_tutorial(self, screen: pygame.Surface, game: Any) -> None:
-        """Vẽ bảng checklist hướng dẫn tân thủ (hỗ trợ thu gọn/mở rộng bằng phím [H])."""
-        if not self.tutorial_visible:
+        """Vẽ bảng checklist hướng dẫn tân thủ khi mở rộng bằng phím [H] (ẩn hoàn toàn khi thu gọn để giải phóng tầm nhìn bản đồ)."""
+        if not self.tutorial_visible or self.collapsed:
             return
 
         font_sm = self._get_font(game, "sm")
         font_xs = self._get_font(game, "xs")
 
         done_count = sum(1 for s in self.steps if s["done"])
-        panel_w = 396
-        panel_x = SCREEN_W - panel_w - 10
-        panel_y = getattr(game, "_tutorial_top_y", 142)
-
-        if self.collapsed:
-            # Dạng thu gọn: một thanh nhỏ gọn gàng ngay dưới bảng Nhiệm vụ
-            bar_h = 28
-            bar_surf = pygame.Surface((panel_w, bar_h), pygame.SRCALPHA)
-            pygame.draw.rect(bar_surf, (34, 22, 14, 232), (0, 0, panel_w, bar_h), border_radius=6)
-            b_col = (92, 245, 130) if self.tutorial_completed else (215, 162, 78)
-            pygame.draw.rect(bar_surf, b_col, (0, 0, panel_w, bar_h), 2, border_radius=6)
-
-            tag_txt = (
-                f"[H] Tân Thủ: {done_count}/5 Hoàn Thành (+50G)"
-                if self.tutorial_completed
-                else f"[H] Hướng Dẫn Tân Thủ: {done_count}/5 Bước (Bấm [H] Mở)"
-            )
-            lbl = font_xs.render(tag_txt, True, (255, 238, 175))
-            bar_surf.blit(lbl, (12, 5))
-            screen.blit(bar_surf, (panel_x, panel_y))
-            return
+        panel_w = 348
+        panel_x = SCREEN_W - panel_w - 8
+        panel_y = getattr(game, "_tutorial_top_y", 64)
 
         # Dạng mở rộng: Bảng chi tiết 5 bước
-        panel_h = 42 + len(self.steps) * 22 + 26
+        panel_h = 38 + len(self.steps) * 20 + 24
         panel_surf = pygame.Surface((panel_w, panel_h), pygame.SRCALPHA)
-        pygame.draw.rect(panel_surf, (32, 20, 12, 238), (0, 0, panel_w, panel_h), border_radius=9)
-        pygame.draw.rect(panel_surf, (215, 162, 78), (0, 0, panel_w, panel_h), 2, border_radius=9)
+        pygame.draw.rect(panel_surf, (32, 20, 12, 228), (0, 0, panel_w, panel_h), border_radius=8)
+        pygame.draw.rect(panel_surf, (215, 162, 78), (0, 0, panel_w, panel_h), 2, border_radius=8)
 
         # Tiêu đề bảng
         head_txt = f"HƯỚNG DẪN TÂN THỦ [H]  ({done_count}/5 HOÀN THÀNH)"

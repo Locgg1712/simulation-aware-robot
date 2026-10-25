@@ -12,6 +12,12 @@ import pygame
 
 from .constants import SCREEN_H, SCREEN_W, m_to_px
 from .entities import VillagerNPC
+from .farming import (
+    CROP_CATALOG,
+    SEED_VENDOR_NAME,
+    is_harvestable_plot,
+    is_within_harvest_reach,
+)
 from .quests import distance_to_harvest_spot, handle_interact_action
 from .safety_hri import check_front_interaction
 
@@ -47,14 +53,89 @@ def compute_autopilot_command(game, dt: float) -> tuple[float, float, bool]:
     elif q.status == "accepted":
         if q.item_key not in game.robot.inventory:
             if q.category == "harvest":
-                target_map = 2
-                if game.current_map_id == 2 and not game.in_interior:
-                    avail = [h for h in game.harvest_spots if h.item_key == q.item_key and h.has_produce]
-                    if avail:
-                        hs = avail[0]
-                        tx, ty = hs.x, hs.y + 18.0
-                        if distance_to_harvest_spot(game.robot.x, game.robot.y, hs) <= 52.0:
+                # Kiểm tra nếu là vật phẩm dã ngoại (Forage) đang có trên bản đồ
+                forage_list = [
+                    f for f in getattr(getattr(game, "state", None), "forage_items", [])
+                    if not f.collected and f.item_key == q.item_key
+                ]
+                if forage_list:
+                    f_target = forage_list[0]
+                    target_map = f_target.map_id
+                    if game.current_map_id == target_map and not game.in_interior:
+                        tx, ty = f_target.x, f_target.y
+                        if math.hypot(game.robot.x - tx, game.robot.y - ty) <= 46.0:
                             want_interact = True
+                else:
+                    target_map = 2
+                    if game.current_map_id == 2 and not game.in_interior:
+                        avail = [h for h in game.harvest_spots if h.item_key == q.item_key and h.has_produce]
+                        if avail:
+                            hs = avail[0]
+                            if hs.field_rect is not None:
+                                tx = float(hs.field_rect.centerx)
+                                ty = float(hs.field_rect.bottom + 14.0)
+                            else:
+                                tx, ty = hs.x, hs.y + 18.0
+                            if is_within_harvest_reach(game.robot.x, game.robot.y, hs):
+                                want_interact = True
+                        elif q.item_key in CROP_CATALOG and getattr(game, "farming", None) is not None:
+                            farming = game.farming
+                            growing_plots = [
+                                h for h in game.harvest_spots
+                                if is_harvestable_plot(h)
+                                and getattr(h, "crop_state", "") == "growing"
+                                and h.item_key == q.item_key
+                            ]
+                            unwatered = [h for h in growing_plots if not getattr(h, "watered", False)]
+                            if unwatered:
+                                hp = unwatered[0]
+                                tx = float(hp.field_rect.centerx) if hp.field_rect else hp.x
+                                ty = float(hp.field_rect.bottom + 14.0) if hp.field_rect else hp.y + 18.0
+                                if is_within_harvest_reach(game.robot.x, game.robot.y, hp):
+                                    want_interact = True
+                            elif growing_plots:
+                                game.set_banner(
+                                    "Ruộng đã được tưới nước! Hãy về Đế Sạc Xưởng Robot (Map 4) bấm [N] ngủ qua ngày để cây chín.",
+                                    (165, 238, 255),
+                                )
+                                return 0.0, 0.0, False
+                            elif farming.seed_bag.get(q.item_key, 0) > 0:
+                                farming.selected_seed = q.item_key
+                                empty_plots = [
+                                    h for h in game.harvest_spots
+                                    if is_harvestable_plot(h) and getattr(h, "crop_state", "") == "empty"
+                                ]
+                                if empty_plots:
+                                    ep = empty_plots[0]
+                                    tx = float(ep.field_rect.centerx) if ep.field_rect else ep.x
+                                    ty = float(ep.field_rect.bottom + 14.0) if ep.field_rect else ep.y + 18.0
+                                    if is_within_harvest_reach(game.robot.x, game.robot.y, ep):
+                                        want_interact = True
+                            else:
+                                vendor = next((n for n in game.npcs if n.name == SEED_VENDOR_NAME), None)
+                                if vendor is not None:
+                                    ideal_dist = m_to_px(1.08)
+                                    vx = vendor.x + math.cos(vendor.theta) * ideal_dist
+                                    vy = vendor.y + math.sin(vendor.theta) * ideal_dist
+                                    tx, ty = vx, vy
+                                    if math.hypot(game.robot.x - vx, game.robot.y - vy) <= 16.0:
+                                        game.robot.v_mps = 0.0
+                                        game.robot.theta = math.atan2(
+                                            vendor.y - game.robot.y, vendor.x - game.robot.x
+                                        )
+                                        ok_all, _ = check_front_interaction(game.robot, vendor)
+                                        if ok_all:
+                                            if farming.buy_seed(game, q.item_key, 1):
+                                                farming.selected_seed = q.item_key
+                                            else:
+                                                return 0.0, 0.0, False
+                                        return 0.0, 0.0, True
+                        else:
+                            game.set_banner(
+                                "Cây ăn quả đã thu hoạch hết hôm nay! Hãy về Đế Sạc Xưởng Robot (Map 4) bấm [N] ngủ qua ngày.",
+                                (255, 215, 125),
+                            )
+                            return 0.0, 0.0, False
             elif q.category == "fishing":
                 target_map = 3
                 if game.current_map_id == 3 and not game.in_interior and game.fishing_spots:

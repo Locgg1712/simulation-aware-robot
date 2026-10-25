@@ -8,7 +8,7 @@
     "y_tile": 11.5,
     "reward_gold": 120,
     "reward_score": 80,
-    "reward_item": "golden_flower",
+    "reward_item": "iridium_ore",
     "reward_quality": 3,
     "duration": 95.0
   },

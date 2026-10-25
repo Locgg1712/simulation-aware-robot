@@ -27,12 +27,15 @@ from typing import Any, Dict, List, Optional, Tuple
 import pygame
 
 from .constants import (
+    CHARGING_DOCKS,
     ITEM_NAMES_VI,
     SCORE_HARVEST_FRUIT,
     SCREEN_H,
     SCREEN_W,
     TILE_SIZE,
+    px_to_m,
 )
+from .farming import apply_state_dict_to_spot, spot_to_state_dict
 
 
 # Bảng mở rộng tên tiếng Việt cho tất cả các vật phẩm bao gồm Foraging
@@ -41,6 +44,7 @@ EXTENDED_ITEM_NAMES_VI: dict[str, str] = {
     "mushroom": "Nấm Rừng Thơm",
     "wild_berry": "Quả Mọng Rừng",
     "golden_flower": "Hoa Cúc Vàng",
+    "iridium_ore": "Khoáng Thạch Iridium",
 }
 
 
@@ -115,6 +119,133 @@ class ForageItem:
 
 
 # ==============================================================================
+# CẤU HÌNH 4 CẤP CHỨNG NHẬN AN TOÀN HRI & 10 THÀNH TỰU DANH GIÁ
+# ==============================================================================
+
+CERTIFICATIONS_CONFIG: list[dict] = [
+    {
+        "level": 1,
+        "id": "cert_lv1_novice",
+        "title": "Chứng Nhận Cấp I: Robot Tập Sự Thung Lũng",
+        "short_tag": "CHỨNG NHẬN HRI CẤP I",
+        "req_desc": "Hoàn thành >= 2 đơn hàng & Đạt >= 150đ Uy tín",
+        "perk_desc": "Thưởng +100G & Mở khóa Gọi Xe Kéo AGV Liên Bản Đồ [C]",
+        "reward_gold": 100,
+    },
+    {
+        "level": 2,
+        "id": "cert_lv2_courier",
+        "title": "Chứng Nhận Cấp II: Chuyên Gia Giao Vận ISO-HRI",
+        "short_tag": "CHỨNG NHẬN HRI CẤP II",
+        "req_desc": "Hoàn thành >= 5 đơn hàng, Điểm >= 450đ & An tâm HRI >= 75%",
+        "perk_desc": "Thưởng +200G & Tăng Trợ cấp An Toàn cuối ngày lên +85G",
+        "reward_gold": 200,
+    },
+    {
+        "level": 3,
+        "id": "cert_lv3_master_agro",
+        "title": "Chứng Nhận Cấp III: Kỹ Sư Nông Nghiệp Tự Động",
+        "short_tag": "CHỨNG NHẬN HRI CẤP III",
+        "req_desc": "Mua đủ 3 nâng cấp Robin, Bán >= 6 nông sản & 2 Sự kiện",
+        "perk_desc": "Thưởng +350G & Tăng +15% giá bán nông sản tại Thùng Giao Hàng",
+        "reward_gold": 350,
+    },
+    {
+        "level": 4,
+        "id": "cert_lv4_golden_citizen",
+        "title": "Chứng Nhận Cấp IV: Huân Chương Vàng Công Dân HRI",
+        "short_tag": "★ CÔNG DÂN VÀNG HRI (CẤP IV)",
+        "req_desc": "Điểm >= 1000đ, Hoàn thành >= 10 đơn & >= 3 cư dân đạt 4♥",
+        "perk_desc": "Thưởng +600G & Cúp Vàng Thị Trưởng Lewis (Mục tiêu Endgame)",
+        "reward_gold": 600,
+    },
+]
+
+ACHIEVEMENTS_CONFIG: list[dict] = [
+    {
+        "id": "first_delivery",
+        "title": "Chuyến Hàng Đầu Tiên",
+        "desc": "Hoàn thành đơn giao hàng đầu tiên cho cư dân.",
+        "reward_gold": 40,
+        "reward_score": 30,
+        "icon": "icon_parcel",
+    },
+    {
+        "id": "agv_partner",
+        "title": "Đội Vận Tải Cơ Giới AGV",
+        "desc": "Đẩy nhẹ, gọi Xe Kéo AGV đi theo [C] hoặc chất hàng lên AGV.",
+        "reward_gold": 50,
+        "reward_score": 40,
+        "icon": "carrot",
+    },
+    {
+        "id": "gentle_yielder",
+        "title": "Robot Lịch Thiệp Chuẩn HRI",
+        "desc": "Nhường đường văn minh cho cư dân đi bộ đủ 5 lần.",
+        "reward_gold": 60,
+        "reward_score": 50,
+        "icon": "icon_heart",
+    },
+    {
+        "id": "master_angler",
+        "title": "Ngư Phủ Cơ Khí Bến Hồ",
+        "desc": "Câu thành công 3 con cá tươi tại Bến Hồ Map 3.",
+        "reward_gold": 75,
+        "reward_score": 50,
+        "icon": "fish",
+    },
+    {
+        "id": "green_thumb",
+        "title": "Bàn Tay Vàng Nông Nghiệp",
+        "desc": "Xuất bán tích lũy 6 nông sản qua Thùng Giao Hàng hoặc AGV.",
+        "reward_gold": 80,
+        "reward_score": 60,
+        "icon": "strawberry",
+    },
+    {
+        "id": "beloved_neighbor",
+        "title": "Người Bạn Của Mọi Nhà",
+        "desc": "Đạt mốc thiện cảm >= 3 Trái Tim với ít nhất 3 cư dân.",
+        "reward_gold": 100,
+        "reward_score": 80,
+        "icon": "golden_flower",
+    },
+    {
+        "id": "robin_maxed",
+        "title": "Siêu Robot Toàn Diện",
+        "desc": "Nâng cấp tối đa cả 3 hạng mục tại Xưởng Mộc Robin [U].",
+        "reward_gold": 120,
+        "reward_score": 100,
+        "icon": "icon_coin",
+    },
+    {
+        "id": "event_hero",
+        "title": "Người Hùng Sự Kiện Thị Trấn",
+        "desc": "Hoàn thành 3 Sự kiện Thế giới Ngẫu nhiên trong thị trấn.",
+        "reward_gold": 120,
+        "reward_score": 90,
+        "icon": "iridium_ore",
+    },
+    {
+        "id": "zero_accident_streak",
+        "title": "Chuỗi Ca Trực Không Tai Nạn",
+        "desc": "Hoàn thành 3 ngày làm việc liên tiếp có đơn hàng và 0 va chạm.",
+        "reward_gold": 150,
+        "reward_score": 120,
+        "icon": "icon_heart",
+    },
+    {
+        "id": "mayor_grand_cup",
+        "title": "Cúp Vàng Thị Trưởng Lewis",
+        "desc": "Đạt Chứng Nhận Cấp IV: Công Dân Tự Hành Danh Dự Pelican!",
+        "reward_gold": 300,
+        "reward_score": 200,
+        "icon": "icon_coin",
+    },
+]
+
+
+# ==============================================================================
 # 3. LỚP QUẢN LÝ TRẠNG THÁI GAME TRUNG TÂM (GAMESTATE)
 # ==============================================================================
 
@@ -159,6 +290,16 @@ class GameState:
         self.daily_orders_completed: int = 0
         self.daily_crops_shipped: int = 0
         self.daily_collisions: int = 0
+
+        # Thống kê tích lũy dài hạn, Chứng Nhận HRI (0..4), Thành Tựu & Đồng hành AGV
+        self.total_crops_shipped: int = 0
+        self.total_fish_caught: int = 0
+        self.total_yields: int = 0
+        self.safe_days_streak: int = 0
+        self.certification_level: int = 0
+        self.unlocked_achievements: list[str] = []
+        self.agv_companion_active: bool = False
+        self.agv_cargo: list[dict] = []
 
         # Modal Thống Kê Cuối Ngày
         self.summary_open: bool = False
@@ -264,13 +405,34 @@ class GameState:
         quality: int = 0,
         quantity: int = 1,
     ) -> bool:
-        """Thêm vật phẩm vào khay chứa đồ của Robot kèm phẩm chất sao."""
+        """
+        Thêm vật phẩm vào khay chứa đồ của Robot kèm phẩm chất sao.
+        Nếu khay Robot đã đầy nhưng có Xe Kéo AGV đang đi theo (hoặc đứng gần <= 95px)
+        và thùng AGV còn chỗ trống (< 4 ô), tự động chất hàng lên thùng AGV!
+        """
         max_cap = getattr(game.robot, "max_inventory", getattr(game.robot, "max_capacity", 4))
-        if len(game.robot.inventory) >= max_cap:
-            return False
-        game.robot.inventory.append(item_key)
-        self.slot_meta.append(InventorySlot(item_key=item_key, quality=quality, quantity=quantity))
-        return True
+        if len(game.robot.inventory) < max_cap:
+            game.robot.inventory.append(item_key)
+            self.slot_meta.append(InventorySlot(item_key=item_key, quality=quality, quantity=quantity))
+            return True
+
+        # Nếu khay Robot đầy -> kiểm tra Xe Kéo AGV đi theo hoặc đứng gần
+        for agv in getattr(game, "agvs", []):
+            dist = math.hypot(game.robot.x - agv.x, game.robot.y - agv.y)
+            if (getattr(agv, "mode", "") == "follow" or dist <= 95.0) and len(agv.cargo) < getattr(agv, "max_cargo", 4):
+                agv.cargo.append({"item_key": item_key, "quality": int(quality), "quantity": int(quantity)})
+                self.agv_cargo = [dict(c) for c in agv.cargo]
+                self.unlock_achievement(game, "agv_partner")
+                item_vi = self.get_item_name(item_key)
+                if hasattr(game, "vfx") and game.vfx is not None:
+                    game.vfx.push_toast(
+                        f"Chất lên AGV: {item_vi}",
+                        f"Thùng Xe Kéo AGV: {len(agv.cargo)}/{agv.max_cargo} ô",
+                        item_key,
+                        (125, 245, 185),
+                    )
+                return True
+        return False
 
     def remove_inventory_at(self, game: Any, idx: int) -> tuple[str, Optional[InventorySlot]]:
         """Lấy một món đồ ra khỏi khay chứa đồ của Robot tại vị trí idx."""
@@ -289,13 +451,9 @@ class GameState:
         all_spots = getattr(game, "harvest_spots", []) + getattr(game, "deco_fields", [])
         current_map = getattr(game, "current_map_id", 1)
         for spot in all_spots:
-            self.persistent_harvest_state[spot.spot_id] = {
-                "has_produce": spot.has_produce,
-                "regrow_timer": spot.regrow_timer,
-                "regrow_total": getattr(spot, "regrow_total", 16.0),
-                "growth_stage": getattr(spot, "growth_stage", 9),
-                "map_id": current_map,
-            }
+            entry = spot_to_state_dict(spot)
+            entry["map_id"] = current_map
+            self.persistent_harvest_state[spot.spot_id] = entry
 
     def sync_map_harvest_from_state(self, game: Any) -> None:
         """Đồng bộ trạng thái ruộng cây trồng từ persistent_harvest_state khi vào Map mới."""
@@ -303,8 +461,7 @@ class GameState:
         for spot in all_spots:
             if spot.spot_id in self.persistent_harvest_state:
                 data = self.persistent_harvest_state[spot.spot_id]
-                spot.has_produce = data.get("has_produce", True)
-                spot.regrow_timer = data.get("regrow_timer", 0.0)
+                apply_state_dict_to_spot(spot, data)
 
     # --------------------------------------------------------------------------
     # HỆ THỐNG VẬT PHẨM DÃ NGOẠI HOANG DÃ (FORAGING SYSTEM)
@@ -410,6 +567,7 @@ class GameState:
                 if hasattr(game, "vfx"):
                     game.vfx.push_toast(
                         f"Dã ngoại: +1 {item_name} {star}".strip(),
+                        "Đã nhặt vật phẩm tự nhiên (+25đ)",
                         item.item_key,
                         (145, 255, 165),
                     )
@@ -554,6 +712,7 @@ class GameState:
                 if hasattr(game, "vfx"):
                     game.vfx.push_toast(
                         f"Đã nhặt lại: {item_name}",
+                        "Khôi phục vật phẩm vào Khay đồ",
                         item_key,
                         (145, 255, 165),
                     )
@@ -601,26 +760,446 @@ class GameState:
                 screen.blit(hint, (hx, hy))
 
     # --------------------------------------------------------------------------
-    # KẾT THÚC NGÀY & CHUYỂN BƯỚC MÙA VỤ (END OF DAY & SEASON ADVANCE)
+    # HỆ THỐNG TƯƠNG TÁC XE KÉO AGV ĐỒNG HÀNH & MỤC TIÊU DÀI HẠN / CHỨNG NHẬN / THÀNH TỰU
     # --------------------------------------------------------------------------
+
+    def try_interact_agv(self, game: Any) -> bool:
+        """
+        Tương tác bằng phím [E] khi đứng gần Xe Kéo Nông Sản AGV (<= 74px):
+        - Nếu thùng AGV đang có hàng và khay Robot còn chỗ trống: lấy hàng từ AGV sang khay Robot.
+        - Ngược lại: chuyển đổi chế độ hoạt động của AGV ('patrol' -> 'follow' -> 'parked' -> 'patrol').
+        """
+        if getattr(game, "in_interior", False):
+            return False
+
+        for agv in getattr(game, "agvs", []):
+            dist = math.hypot(game.robot.x - agv.x, game.robot.y - agv.y)
+            if dist <= 74.0:
+                max_cap = getattr(game.robot, "max_inventory", 4)
+                # Ưu tiên lấy hàng từ thùng AGV sang khay Robot nếu có hàng và khay Robot còn trống
+                if agv.cargo and len(game.robot.inventory) < max_cap:
+                    entry = agv.cargo.pop(0)
+                    ik = entry.get("item_key", "apple") if isinstance(entry, dict) else str(entry)
+                    ql = int(entry.get("quality", 0)) if isinstance(entry, dict) else 0
+                    self.add_inventory_item(game, ik, quality=ql)
+                    self.agv_cargo = [dict(c) for c in agv.cargo]
+                    item_vi = self.get_item_name(ik)
+                    if hasattr(game, "audio") and game.audio:
+                        game.audio.play_sfx("harvest")
+                    if hasattr(game, "set_banner"):
+                        game.set_banner(
+                            f"Đã lấy {item_vi} từ Thùng Xe Kéo AGV sang Khay Robot! (Còn {len(agv.cargo)}/{agv.max_cargo} trên AGV)",
+                            (145, 248, 175),
+                        )
+                    return True
+
+                # Đổi chế độ AGV: Đi theo làm việc / Đỗ tại chỗ / Tự tuần tra
+                new_mode = agv.toggle_follow_mode()
+                self.agv_companion_active = (new_mode == "follow")
+                self.agv_cargo = [dict(c) for c in agv.cargo]
+                self.unlock_achievement(game, "agv_partner")
+                mode_names = {
+                    "follow": "ĐI THEO HỖ TRỢ ROBOT (+4 ô thùng hàng tự động hứng nông sản)",
+                    "parked": "ĐỨNG ĐỖ TẠI CHỖ (Có thể chạm nhẹ để đẩy đi)",
+                    "patrol": "TỰ ĐỘNG TUẦN TRA NÔNG TRẠI",
+                }
+                if hasattr(game, "audio") and game.audio:
+                    game.audio.play_sfx("portal")
+                if hasattr(game, "set_banner"):
+                    game.set_banner(
+                        f"Xe Kéo AGV đã chuyển sang chế độ: {mode_names.get(new_mode, new_mode)}!",
+                        (135, 245, 195),
+                    )
+                return True
+        return False
+
+    def call_or_toggle_agv(self, game: Any) -> bool:
+        """
+        Gọi hoặc chuyển đổi trạng thái Xe Kéo AGV bằng phím [C]:
+        - Nếu trên bản đồ hiện tại có AGV: bật/tắt chế độ Đi Theo ('follow').
+        - Nếu ở bản đồ khác mà đã đạt Chứng Nhận HRI Cấp I trở lên (hoặc đang có AGV đi theo):
+          triệu hồi ngay Xe Kéo AGV tới sau lưng Robot!
+        """
+        if getattr(game, "in_interior", False):
+            if hasattr(game, "set_banner"):
+                game.set_banner("Xe Kéo AGV chỉ hoạt động ngoài trời (Map 1..4)!", (255, 195, 115))
+            return False
+
+        agvs = getattr(game, "agvs", [])
+        if agvs:
+            agv = agvs[0]
+            agv.mode = "patrol" if agv.mode == "follow" else "follow"
+            if agv.mode == "follow":
+                # Di chuyển AGV lại gần nếu đang ở quá xa
+                if math.hypot(game.robot.x - agv.x, game.robot.y - agv.y) > 160.0:
+                    agv.x = max(48.0, min(SCREEN_W - 48.0, game.robot.x - math.cos(game.robot.theta) * 48.0))
+                    agv.y = max(56.0, min(SCREEN_H - 56.0, game.robot.y - math.sin(game.robot.theta) * 48.0))
+            self.agv_companion_active = (agv.mode == "follow")
+            self.agv_cargo = [dict(c) for c in agv.cargo]
+            self.unlock_achievement(game, "agv_partner")
+            st = "ĐI THEO ROBOT (+4 ô chứa phụ)" if agv.mode == "follow" else "TỰ TUẦN TRA"
+            if hasattr(game, "set_banner"):
+                game.set_banner(f"Đã điều khiển Xe Kéo AGV [C]: {st}!", (135, 245, 195))
+            return True
+
+        # Nếu bản đồ hiện tại chưa có AGV -> kiểm tra Chứng Nhận Cấp I hoặc đã kích hoạt AGV đồng hành
+        if self.certification_level >= 1 or self.agv_companion_active:
+            from .entities import FarmCartAGV
+            ax = max(48.0, min(SCREEN_W - 48.0, game.robot.x - math.cos(game.robot.theta) * 48.0))
+            ay = max(56.0, min(SCREEN_H - 56.0, game.robot.y - math.sin(game.robot.theta) * 48.0))
+            new_agv = FarmCartAGV(ax, ay, waypoints=[(ax, ay)])
+            new_agv.mode = "follow"
+            new_agv.cargo = [dict(c) for c in self.agv_cargo]
+            game.agvs.append(new_agv)
+            self.agv_companion_active = True
+            self.unlock_achievement(game, "agv_partner")
+            if hasattr(game, "set_banner"):
+                game.set_banner(
+                    "Đã triệu hồi Xe Kéo AGV Liên Bản Đồ [C] tới hỗ trợ chở nông sản!",
+                    (135, 255, 175),
+                )
+            return True
+
+        if hasattr(game, "set_banner"):
+            game.set_banner(
+                "Hãy lên Map 2 (Đại Nông Trại) gặp Xe Kéo AGV hoặc đạt Chứng Nhận HRI Cấp I để gọi AGV mọi nơi [C]!",
+                (255, 210, 120),
+            )
+        return False
+
+    def sync_companion_agv_on_map(self, game: Any) -> None:
+        """Đảm bảo khi chuyển bản đồ ngoài trời, Xe Kéo AGV đang ở chế độ 'follow' sẽ đi theo Robot sang Map mới."""
+        if getattr(game, "in_interior", False) or not self.agv_companion_active:
+            return
+        agvs = getattr(game, "agvs", [])
+        if agvs:
+            agv = agvs[0]
+            agv.mode = "follow"
+            agv.cargo = [dict(c) for c in self.agv_cargo]
+            agv.x = max(48.0, min(SCREEN_W - 48.0, game.robot.x - math.cos(game.robot.theta) * 46.0))
+            agv.y = max(56.0, min(SCREEN_H - 56.0, game.robot.y - math.sin(game.robot.theta) * 46.0))
+        else:
+            from .entities import FarmCartAGV
+            ax = max(48.0, min(SCREEN_W - 48.0, game.robot.x - math.cos(game.robot.theta) * 46.0))
+            ay = max(56.0, min(SCREEN_H - 56.0, game.robot.y - math.sin(game.robot.theta) * 46.0))
+            new_agv = FarmCartAGV(ax, ay, waypoints=[(ax, ay)])
+            new_agv.mode = "follow"
+            new_agv.cargo = [dict(c) for c in self.agv_cargo]
+            game.agvs.append(new_agv)
+
+    def unlock_achievement(self, game: Any, ach_id: str) -> bool:
+        """Mở khóa một thành tựu (nếu chưa mở) và trao thưởng Vàng + Điểm Uy Tín + Toast thông báo."""
+        if ach_id in self.unlocked_achievements:
+            return False
+        ach_cfg = next((a for a in ACHIEVEMENTS_CONFIG if a["id"] == ach_id), None)
+        if ach_cfg is None:
+            return False
+
+        self.unlocked_achievements.append(ach_id)
+        r_gold = int(ach_cfg.get("reward_gold", 50))
+        r_score = int(ach_cfg.get("reward_score", 40))
+        title = ach_cfg.get("title", ach_id)
+        icon = ach_cfg.get("icon", "icon_coin")
+
+        if hasattr(game, "gold"):
+            game.gold += r_gold
+        self.daily_gold_earned += r_gold
+        if hasattr(game, "add_score"):
+            game.add_score(r_score, f"Thành tựu: {title}")
+        elif hasattr(game, "score"):
+            game.score += r_score
+
+        if hasattr(game, "audio") and game.audio:
+            game.audio.play_sfx("gold")
+        if hasattr(game, "vfx") and game.vfx:
+            game.vfx.push_toast(
+                f"THÀNH TỰU: {title}",
+                f"Thưởng +{r_gold}G & +{r_score}đ (Xem [J] -> Tab 4)",
+                icon,
+                (255, 225, 75),
+            )
+        return True
+
+    def check_achievements_and_certifications(self, game: Any) -> None:
+        """Kiểm tra tự động và mở khóa các Thành tựu & Chứng nhận HRI Cấp I..IV khi đủ điều kiện."""
+        orders_done = int(getattr(game, "completed_quests_count", 0))
+        score_val = int(getattr(game, "score", 0))
+        comfort_val = float(getattr(game, "comfort_score", 100.0))
+        events_done = int(getattr(getattr(game, "random_events", None), "total_events_completed", 0))
+        bought = getattr(getattr(game, "workshop", None), "bought_status", {})
+        all_robin = bool(bought) and all(
+            bool(bought.get(k, False)) for k in ("cargo_lv2", "fast_harvest", "social_radar")
+        )
+
+        hearts_3_count = 0
+        hearts_4_count = 0
+        if hasattr(game, "dialogue") and game.dialogue is not None and hasattr(game.dialogue, "get_hearts"):
+            for npc_name in self.npcs_db.keys():
+                h_cnt = game.dialogue.get_hearts(npc_name)
+                if h_cnt >= 3:
+                    hearts_3_count += 1
+                if h_cnt >= 4:
+                    hearts_4_count += 1
+
+        # 1. Kiểm tra 10 Thành tựu
+        if orders_done >= 1:
+            self.unlock_achievement(game, "first_delivery")
+        if self.total_yields >= 5:
+            self.unlock_achievement(game, "gentle_yielder")
+        if self.total_fish_caught >= 3:
+            self.unlock_achievement(game, "master_angler")
+        if self.total_crops_shipped >= 6:
+            self.unlock_achievement(game, "green_thumb")
+        if hearts_3_count >= 3:
+            self.unlock_achievement(game, "beloved_neighbor")
+        if all_robin:
+            self.unlock_achievement(game, "robin_maxed")
+        if events_done >= 3:
+            self.unlock_achievement(game, "event_hero")
+        if self.safe_days_streak >= 3:
+            self.unlock_achievement(game, "zero_accident_streak")
+
+        # 2. Kiểm tra 4 Cấp Chứng Nhận An Toàn HRI của Thị Trưởng Lewis
+        if self.certification_level < 1 and orders_done >= 2 and score_val >= 150:
+            self._award_certification(game, 1)
+        if self.certification_level < 2 and orders_done >= 5 and score_val >= 450 and comfort_val >= 75.0:
+            self._award_certification(game, 2)
+        if self.certification_level < 3 and all_robin and self.total_crops_shipped >= 6 and events_done >= 2:
+            self._award_certification(game, 3)
+        if self.certification_level < 4 and score_val >= 1000 and orders_done >= 10 and hearts_4_count >= 3:
+            self._award_certification(game, 4)
+            self.unlock_achievement(game, "mayor_grand_cup")
+
+    def _award_certification(self, game: Any, level: int) -> None:
+        self.certification_level = max(self.certification_level, level)
+        cfg = next((c for c in CERTIFICATIONS_CONFIG if c["level"] == level), None)
+        if cfg is None:
+            return
+        r_gold = int(cfg.get("reward_gold", 100))
+        if hasattr(game, "gold"):
+            game.gold += r_gold
+        self.daily_gold_earned += r_gold
+        if hasattr(game, "audio") and game.audio:
+            game.audio.play_sfx("gold")
+        if hasattr(game, "vfx") and game.vfx:
+            game.vfx.push_toast(
+                cfg["short_tag"],
+                f"+{r_gold}G | {cfg['perk_desc']}",
+                "icon_coin",
+                (255, 218, 65),
+            )
+        if hasattr(game, "set_banner"):
+            game.set_banner(
+                f"CHÚC MỪNG THĂNG CẤP: {cfg['title']}! Nhận +{r_gold}G ({cfg['perk_desc']})",
+                (255, 232, 95),
+            )
+
+    def compute_mayor_evaluation_score(self, game: Any) -> tuple[int, str]:
+        """Tính Điểm Kiểm Định Đô Thị của Thị Trưởng Lewis (0..100 điểm) cho Mục tiêu Dài hạn."""
+        score_pts = min(30, int(max(0, getattr(game, "score", 0)) * 30 // 1000))
+        order_pts = min(25, int(getattr(game, "completed_quests_count", 0)) * 25 // 10)
+        ach_pts = min(20, len(self.unlocked_achievements) * 2)
+        cert_pts = min(15, self.certification_level * 4)
+        comfort_pts = min(10, int(float(getattr(game, "comfort_score", 100.0)) // 10))
+        total_eval = min(100, score_pts + order_pts + ach_pts + cert_pts + comfort_pts)
+        if total_eval >= 90:
+            title = "HUYỀN THOẠI ROBOT AN TOÀN PELICAN (Hạng S+)"
+        elif total_eval >= 70:
+            title = "CHUYÊN GIA TỰ HÀNH ĐÁNG TIN CẬY (Hạng A)"
+        elif total_eval >= 45:
+            title = "TRỢ THỦ NÔNG TRẠI TIỀM NĂNG (Hạng B)"
+        else:
+            title = "ROBOT TẬP SỰ ĐANG THỬ VIỆC (Hạng C)"
+        return total_eval, title
+
+    # --------------------------------------------------------------------------
+    # TRẠM SẠC PIN (CHARGING DOCK), KẾT THÚC NGÀY & CHUYỂN BƯỚC MÙA VỤ
+    # --------------------------------------------------------------------------
+
+    def get_current_dock(self, game: Any) -> tuple[float, float, str]:
+        """Lấy tọa độ (x, y, tên) của Đế Sạc Tia Chớp bên trong Xưởng & Nhà Robot (Map 4 -> Nội thất robot_house)."""
+        room = getattr(game, "room_rect", pygame.Rect((1152 - 704) // 2, (768 - 440) // 2 + 34, 704, 440))
+        dock_x = float(room.x + int(room.width * 0.77))
+        dock_y = float(room.y + int(room.height * 0.56))
+        return (dock_x, dock_y, "Đế Sạc Xưởng Robot (Map 4)")
+
+    def is_in_robot_house(self, game: Any) -> bool:
+        """Kiểm tra Robot có đang ở bên trong Xưởng & Nhà Robot (robot_house) hay không."""
+        return bool(
+            getattr(game, "in_interior", False)
+            and getattr(getattr(game, "current_interior", None), "house_id", "") == "robot_house"
+        )
+
+    def is_near_charging_dock(self, game: Any, max_dist: float = 78.0) -> tuple[bool, float, tuple[float, float, str]]:
+        """Kiểm tra Robot có đang đứng tại Đế Sạc Tia Chớp bên trong Xưởng & Nhà Robot hay không."""
+        dock = self.get_current_dock(game)
+        if not self.is_in_robot_house(game):
+            return False, 999.0, dock
+        dx = float(getattr(game.robot, "x", 0.0)) - dock[0]
+        dy = float(getattr(game.robot, "y", 0.0)) - dock[1]
+        dist_px = math.hypot(dx, dy)
+        return (dist_px <= max_dist), dist_px, dock
+
+    def is_near_upgrade_station(self, game: Any, max_dist: float = 86.0) -> tuple[bool, float]:
+        """Kiểm tra Robot có đang đứng cạnh Trạm Cánh Tay Cải Tiến Robot bên trong Xưởng Robot hay không."""
+        if not self.is_in_robot_house(game):
+            return False, 999.0
+        room = getattr(game, "room_rect", pygame.Rect((1152 - 704) // 2, (768 - 440) // 2 + 34, 704, 440))
+        up_x = float(room.x + int(room.width * 0.27))
+        up_y = float(room.y + int(room.height * 0.54) + 16)
+        dist_px = math.hypot(float(getattr(game.robot, "x", 0.0)) - up_x, float(getattr(game.robot, "y", 0.0)) - up_y)
+        return (dist_px <= max_dist), dist_px
+
+    def try_interact_upgrade_station(self, game: Any) -> bool:
+        """Tương tác bằng phím [E] khi đứng cạnh Trạm Cánh Tay Cải Tiến Robot bên trong Xưởng Robot."""
+        near_up, _ = self.is_near_upgrade_station(game, 86.0)
+        if not near_up:
+            return False
+        if getattr(game, "workshop", None) is not None:
+            game.workshop.open = True
+            if hasattr(game, "vfx") and game.vfx:
+                game.vfx._mark_step_done(4)
+            if hasattr(game, "set_banner"):
+                game.set_banner(
+                    "Đã kết nối Trạm Cánh Tay Cải Tiến Robot! Chọn gói nâng cấp [1]..[5] (Lv.1 -> Lv.3) hoặc Bảo Dưỡng [6].",
+                    (135, 248, 165),
+                )
+            return True
+        return False
+
+    def try_interact_charging_dock(self, game: Any) -> bool:
+        """
+        Tương tác bằng phím [E] khi đứng tại Đế Sạc Tia Chớp trong Xưởng Robot:
+        Sạc Pin gắn liền với việc Ngủ qua ngày mới (không tự động đầy ngay khi chỉ đứng lên).
+        """
+        near_dock, _, _ = self.is_near_charging_dock(game, 78.0)
+        if not near_dock:
+            return False
+        self.try_sleep_and_advance(game)
+        return True
+
+    def try_sleep_and_advance(self, game: Any) -> bool:
+        """
+        Kiểm tra điều kiện Sạc Pin & Đi Ngủ Qua Ngày [N] / [E]:
+        1. BẮT BUỘC phải về Xưởng & Nhà Robot (Map 4) và đứng trên Đế Sạc Tia Chớp (<= 78px).
+        2. Sạc Pin gắn liền với việc Ngủ qua ngày: nếu vừa thức dậy lúc sáng (Pin >= 95%, chưa làm việc),
+           chặn bấm nhầm để tránh spam qua ngày.
+        """
+        near_dock, dist_px, dock = self.is_near_charging_dock(game, 78.0)
+        if not near_dock:
+            if self.is_in_robot_house(game):
+                dist_m = px_to_m(dist_px)
+                msg = f"Hãy di chuyển lại gần Đế Sạc Tia Chớp bên phải phòng (cách {dist_m:.1f}m) rồi bấm [E] hoặc [N] để Sạc Pin & Ngủ!"
+            else:
+                msg = "Không thể ngủ hay sạc ngoài đường! Hãy về [Xưởng & Nhà Robot (Số 5)] tại Map 4 (Khu Dân Cư) để Sạc Pin & Ngủ [N]!"
+            if hasattr(game, "set_banner"):
+                game.set_banner(msg, (255, 195, 95))
+            return False
+
+        from .atmosphere import compute_clock_hour
+        hour = compute_clock_hour(float(getattr(game, "sim_time", 0.0)))
+        has_farming_progress = any(
+            isinstance(s, dict) and s.get("crop_state") == "growing"
+            for s in self.persistent_harvest_state.values()
+        )
+        has_worked = (
+            self.daily_orders_completed > 0
+            or self.daily_crops_shipped > 0
+            or self.daily_gold_earned > 0
+            or has_farming_progress
+        )
+        cur_bat = float(getattr(game.robot, "battery", 100.0))
+        if (6.0 <= hour < 18.0) and not has_worked and cur_bat >= 95.0:
+            if hasattr(game, "set_banner"):
+                game.set_banner(
+                    f"Pin đang đầy ({cur_bat:.0f}%) và mới {int(hour):02d}:00 sáng! Hãy ra ngoài làm việc trước khi Sạc Pin & Ngủ qua ngày mới.",
+                    (255, 185, 95),
+                )
+            return False
+        self.end_day_and_advance(game)
+        return True
+
+    def rollover_new_day_continuous(self, game: Any) -> None:
+        """
+        Chuyển sang ngày mới mượt mà tại 07:00 sáng khi người chơi chọn thức làm việc xuyên đêm (không bấm [N] đi ngủ):
+        - Không bật Modal làm gián đoạn mạch chơi, chỉ thông báo qua Toast & Banner.
+        """
+        base_safe_bonus = 85 if self.certification_level >= 2 else 50
+        if self.daily_collisions == 0 and self.daily_orders_completed >= 1:
+            safety_bonus = base_safe_bonus
+            self.safe_days_streak += 1
+        else:
+            safety_bonus = 0
+            if self.daily_collisions > 0:
+                self.safe_days_streak = 0
+        if hasattr(game, "gold"):
+            game.gold += safety_bonus
+        if hasattr(game, "add_score") and safety_bonus > 0:
+            game.add_score(50, "Thưởng Ca Đêm An Toàn HRI")
+        self.check_achievements_and_certifications(game)
+
+        rained = (getattr(getattr(game, "atmosphere", None), "current_weather", "") == "rain")
+        if hasattr(game, "farming") and game.farming is not None:
+            game.farming.advance_day(game, rained=rained)
+
+        self.day += 1
+        self.season_idx = ((self.day - 1) // 5) % len(self.SEASONS)
+        day_in_season = ((self.day - 1) % 5) + 1
+        self.festival_active = (day_in_season == 3)
+        self.spawn_daily_forage_items()
+
+        if hasattr(game, "total_knockdowns"):
+            game.total_knockdowns = 0
+        if hasattr(game, "hearts"):
+            game.hearts = getattr(game, "max_hearts", 3)
+        if hasattr(game, "comfort_score"):
+            game.comfort_score = 100.0
+
+        self.daily_gold_earned = 0
+        self.daily_orders_completed = 0
+        self.daily_crops_shipped = 0
+        self.daily_collisions = 0
+
+        if hasattr(game, "vfx") and game.vfx:
+            game.vfx.push_toast(
+                f"Bình Minh Ngày {self.day} ({self.current_season_name})",
+                f"Ca đêm hoàn tất! +{safety_bonus}G thưởng an toàn",
+                "icon_coin",
+                (255, 225, 95),
+            )
+        if hasattr(game, "set_banner"):
+            game.set_banner(
+                f"Bình minh Ngày {self.day} ({self.current_season_name})! Cư dân đã thức dậy và cây trồng đã chín mới.",
+                (255, 235, 140),
+            )
+        if hasattr(game, "random_events") and game.random_events is not None:
+            game.random_events.on_new_day(game)
 
     def end_day_and_advance(self, game: Any) -> None:
         """
         Kết thúc ca làm việc trong ngày và bắt đầu ngày mới:
         - Mở Modal Báo Cáo Cuối Ngày (`self.summary_open = True`).
-        - Tính thưởng An Toàn HRI (+50G nếu không có va chạm trong ngày).
+        - Tính thưởng An Toàn HRI (+50G & +50đ CHỈ KHI không va chạm VÀ đã hoàn thành ít nhất 1 đơn hàng trong ngày).
         - Phục hồi toàn bộ ruộng cây trồng (`has_produce = True`).
         - Tăng ngày `self.day += 1`.
         - Cứ mỗi 5 ngày tự động chuyển sang mùa tiếp theo.
         - Ngày 3 của mỗi mùa kích hoạt Lễ hội thị trấn (`festival_active = True`).
         - Đặt lại đồng hồ thời gian buổi sáng (07:00).
         """
-        # 1. Tính thưởng An Toàn HRI
-        safety_bonus = 50 if self.daily_collisions == 0 else 0
+        # 1. Tính thưởng An Toàn HRI (Chống spam ngủ: phải hoàn thành >= 1 đơn hàng mới được thưởng ca làm việc an toàn)
+        base_safe_bonus = 85 if self.certification_level >= 2 else 50
+        if self.daily_collisions == 0 and self.daily_orders_completed >= 1:
+            safety_bonus = base_safe_bonus
+            self.safe_days_streak += 1
+        else:
+            safety_bonus = 0
+            if self.daily_collisions > 0:
+                self.safe_days_streak = 0
         if hasattr(game, "gold"):
             game.gold += safety_bonus
         if hasattr(game, "add_score") and safety_bonus > 0:
             game.add_score(50, "Thưởng An Toàn HRI Không Va Chạm")
+        self.check_achievements_and_certifications(game)
 
         # 2. Lưu lại thống kê tổng kết
         self.last_summary = {
@@ -637,17 +1216,10 @@ class GameState:
             "festival_active": self.festival_active,
         }
 
-        # 3. Phục hồi toàn bộ ruộng cây trồng trong persistent_harvest_state
-        for spot_id, sdata in self.persistent_harvest_state.items():
-            sdata["has_produce"] = True
-            sdata["regrow_timer"] = 0.0
-            sdata["growth_stage"] = 9
-
-        # Cập nhật trực tiếp cho các thửa ruộng ở Map hiện tại
-        all_spots = getattr(game, "harvest_spots", []) + getattr(game, "deco_fields", [])
-        for spot in all_spots:
-            spot.has_produce = True
-            spot.regrow_timer = 0.0
+        # 3. Tăng trưởng cây trồng & cây ăn quả qua ngày mới theo hệ thống Nông Nghiệp Theo Ngày
+        rained = (getattr(getattr(game, "atmosphere", None), "current_weather", "") == "rain")
+        if hasattr(game, "farming") and game.farming is not None:
+            game.farming.advance_day(game, rained=rained)
 
         # 4. Tăng ngày và tính toán chu kỳ Mùa / Lễ hội
         self.day += 1
@@ -660,9 +1232,17 @@ class GameState:
         # 5. Sinh mới vật phẩm nhặt dã ngoại
         self.spawn_daily_forage_items()
 
-        # 6. Đặt lại đồng hồ buổi sáng sớm (07:00)
+        # 6. Đặt lại đồng hồ buổi sáng sớm (07:00) & hồi phục Tim An Toàn / Comfort HRI / reset số lần đâm trong ngày (L2, Pha 2)
         if hasattr(game, "sim_time"):
             game.sim_time = 0.0
+        if hasattr(game, "total_knockdowns"):
+            game.total_knockdowns = 0
+        if hasattr(game, "hearts"):
+            game.hearts = getattr(game, "max_hearts", 3)
+        if hasattr(game, "comfort_score"):
+            game.comfort_score = 100.0
+        if hasattr(game, "robot") and hasattr(game.robot, "battery"):
+            game.robot.battery = float(getattr(game.robot, "max_battery", 100.0))
 
         # 7. Đặt lại các biến thống kê trong ngày
         self.daily_gold_earned = 0
@@ -826,8 +1406,12 @@ class GameState:
 
         # Thu thập trạng thái nâng cấp Robin
         workshop_bought: dict[str, bool] = {}
-        if hasattr(game, "workshop") and hasattr(game.workshop, "bought_status"):
-            workshop_bought = dict(game.workshop.bought_status)
+        workshop_levels: dict[str, int] = {}
+        if hasattr(game, "workshop"):
+            if hasattr(game.workshop, "bought_status"):
+                workshop_bought = dict(game.workshop.bought_status)
+            if hasattr(game.workshop, "upgrade_levels"):
+                workshop_levels = {k: int(v) for k, v in game.workshop.upgrade_levels.items()}
 
         # Thu thập điểm thiện cảm NPC
         friendship_data: dict[str, int] = {}
@@ -835,7 +1419,37 @@ class GameState:
             friendship_data = dict(game.dialogue.friendship)
 
         now_str = datetime.now().strftime("%d/%m/%Y %H:%M")
+        self.sync_slot_meta_with_inventory(getattr(game.robot, "inventory", []))
+        quests_state = [
+            {
+                "quest_id": getattr(q, "quest_id", ""),
+                "status": getattr(q, "status", "available"),
+                "bonus_timer": float(getattr(q, "bonus_timer", 0.0)),
+            }
+            for q in getattr(game, "quests", [])
+        ]
+        forage_serialized = [asdict(f) for f in self.forage_items]
+        dropped_serialized = [
+            {
+                "item_key": d.get("item_key", ""),
+                "quality": getattr(d.get("slot"), "quality", 0) if d.get("slot") is not None else 0,
+                "x": float(d.get("x", 0.0)),
+                "y": float(d.get("y", 0.0)),
+                "map_id": int(d.get("map_id", 1)),
+                "in_interior": bool(d.get("in_interior", False)),
+                "timer": float(d.get("timer", 180.0)),
+            }
+            for d in self.dropped_items
+        ]
+        active_ev_data = None
+        if hasattr(game, "random_events") and getattr(game.random_events, "active_event", None) is not None:
+            active_ev_data = {
+                "event": dict(game.random_events.active_event),
+                "timer": float(getattr(game.random_events, "event_timer", 0.0)),
+            }
+
         save_payload = {
+            "save_version": 2,
             "slot_id": safe_slot,
             "saved_at": now_str,
             "save_time": f"Ngày {self.day} ({self.current_season_name}) - {now_str}",
@@ -843,23 +1457,44 @@ class GameState:
             "season_idx": self.season_idx,
             "season_name": self.current_season_name,
             "festival_active": self.festival_active,
+            "sim_time": float(getattr(game, "sim_time", 0.0)),
             "gold": getattr(game, "gold", 60),
             "score": getattr(game, "score", 0),
             "hearts": getattr(game, "hearts", 3),
+            "comfort_score": float(getattr(game, "comfort_score", 100.0)),
             "completed_quests_count": getattr(game, "completed_quests_count", 0),
             "total_knockdowns": getattr(game, "total_knockdowns", 0),
             "quest_idx": getattr(game, "quest_idx", 0),
+            "quests_state": quests_state,
             "current_map_id": getattr(game, "current_map_id", 1),
             "in_interior": getattr(game, "in_interior", False),
             "robot_x": float(game.robot.x),
             "robot_y": float(game.robot.y),
             "robot_theta": float(game.robot.theta),
+            "robot_battery": float(getattr(game.robot, "battery", 100.0)),
             "inventory": list(game.robot.inventory),
             "max_inventory": getattr(game.robot, "max_inventory", 4),
             "slot_meta": [asdict(s) for s in self.slot_meta],
             "workshop_bought": workshop_bought,
+            "workshop_levels": workshop_levels,
             "friendship": friendship_data,
             "persistent_harvest_state": self.persistent_harvest_state,
+            "forage_items": forage_serialized,
+            "dropped_items": dropped_serialized,
+            "active_event": active_ev_data,
+            "total_crops_shipped": self.total_crops_shipped,
+            "total_fish_caught": self.total_fish_caught,
+            "total_yields": self.total_yields,
+            "safe_days_streak": self.safe_days_streak,
+            "certification_level": self.certification_level,
+            "unlocked_achievements": list(self.unlocked_achievements),
+            "agv_companion_active": self.agv_companion_active,
+            "agv_cargo": list(self.agv_cargo),
+            "farming": (
+                game.farming.to_save_dict()
+                if hasattr(game, "farming") and game.farming is not None
+                else {}
+            ),
         }
 
         try:
@@ -896,6 +1531,8 @@ class GameState:
             self.day = int(payload.get("day", 1))
             self.season_idx = int(payload.get("season_idx", 0))
             self.festival_active = bool(payload.get("festival_active", False))
+            if hasattr(game, "sim_time"):
+                game.sim_time = float(payload.get("sim_time", 0.0))
 
             if hasattr(game, "gold"):
                 game.gold = int(payload.get("gold", 60))
@@ -903,12 +1540,67 @@ class GameState:
                 game.score = int(payload.get("score", 0))
             if hasattr(game, "hearts"):
                 game.hearts = int(payload.get("hearts", 3))
+            if hasattr(game, "comfort_score"):
+                game.comfort_score = float(payload.get("comfort_score", 100.0))
             if hasattr(game, "completed_quests_count"):
                 game.completed_quests_count = int(payload.get("completed_quests_count", 0))
             if hasattr(game, "total_knockdowns"):
                 game.total_knockdowns = int(payload.get("total_knockdowns", 0))
             if hasattr(game, "quest_idx"):
                 game.quest_idx = int(payload.get("quest_idx", 0))
+
+            # Khôi phục trạng thái từng nhiệm vụ (L5)
+            saved_quests = payload.get("quests_state", [])
+            if isinstance(saved_quests, list) and hasattr(game, "quests"):
+                by_id = {q.quest_id: q for q in game.quests if hasattr(q, "quest_id")}
+                for sq in saved_quests:
+                    if isinstance(sq, dict):
+                        qid = sq.get("quest_id", "")
+                        if qid in by_id:
+                            by_id[qid].status = str(sq.get("status", "available"))
+                            by_id[qid].bonus_timer = float(sq.get("bonus_timer", by_id[qid].bonus_time_limit))
+
+            # Khôi phục forage_items, dropped_items và sự kiện đang chạy (L5)
+            raw_forage = payload.get("forage_items")
+            if isinstance(raw_forage, list):
+                self.forage_items = [
+                    ForageItem(
+                        item_key=str(f.get("item_key", "mushroom")),
+                        x=float(f.get("x", 0.0)),
+                        y=float(f.get("y", 0.0)),
+                        map_id=int(f.get("map_id", 1)),
+                        collected=bool(f.get("collected", False)),
+                        quality=int(f.get("quality", 0)),
+                    )
+                    for f in raw_forage
+                    if isinstance(f, dict)
+                ]
+            raw_dropped = payload.get("dropped_items")
+            if isinstance(raw_dropped, list):
+                self.dropped_items = [
+                    {
+                        "item_key": str(d.get("item_key", "apple")),
+                        "slot": InventorySlot(
+                            item_key=str(d.get("item_key", "apple")),
+                            quality=int(d.get("quality", 0)),
+                        ),
+                        "x": float(d.get("x", 0.0)),
+                        "y": float(d.get("y", 0.0)),
+                        "map_id": int(d.get("map_id", 1)),
+                        "in_interior": bool(d.get("in_interior", False)),
+                        "timer": float(d.get("timer", 180.0)),
+                    }
+                    for d in raw_dropped
+                    if isinstance(d, dict)
+                ]
+            active_ev_data = payload.get("active_event")
+            if hasattr(game, "random_events") and game.random_events is not None:
+                if isinstance(active_ev_data, dict) and isinstance(active_ev_data.get("event"), dict):
+                    game.random_events.active_event = dict(active_ev_data["event"])
+                    game.random_events.event_timer = float(active_ev_data.get("timer", 60.0))
+                else:
+                    game.random_events.active_event = None
+                    game.random_events.event_timer = 0.0
 
             # Khôi phục khay đồ và slot_meta
             game.robot.inventory = list(payload.get("inventory", []))
@@ -925,19 +1617,34 @@ class GameState:
 
             # Khôi phục nâng cấp Robin
             workshop_bought = payload.get("workshop_bought", {})
-            if hasattr(game, "workshop") and isinstance(workshop_bought, dict):
-                game.workshop.bought_status.update({k: bool(v) for k, v in workshop_bought.items()})
+            workshop_levels = payload.get("workshop_levels", {})
+            if hasattr(game, "workshop"):
+                if isinstance(workshop_bought, dict) and hasattr(game.workshop, "bought_status"):
+                    game.workshop.bought_status.update({k: bool(v) for k, v in workshop_bought.items()})
+                if isinstance(workshop_levels, dict) and hasattr(game.workshop, "upgrade_levels"):
+                    game.workshop.upgrade_levels.update({k: int(v) for k, v in workshop_levels.items()})
                 game.workshop.apply_passive_effects(game)
             if hasattr(game, "robot"):
                 game.robot.max_inventory = int(payload.get("max_inventory", game.robot.max_inventory))
+                game.robot.battery = float(payload.get("robot_battery", 100.0))
 
             # Khôi phục thiện cảm NPC
             friendship_data = payload.get("friendship", {})
             if hasattr(game, "dialogue") and hasattr(game.dialogue, "friendship"):
                 game.dialogue.friendship = {k: int(v) for k, v in friendship_data.items()}
 
-            # Khôi phục trạng thái ruộng cây trồng
+            # Khôi phục trạng thái ruộng cây trồng & Thành tựu / Chứng nhận / AGV / Nông nghiệp
             self.persistent_harvest_state = payload.get("persistent_harvest_state", {})
+            if hasattr(game, "farming") and game.farming is not None and isinstance(payload.get("farming"), dict):
+                game.farming.load_save_dict(payload["farming"])
+            self.total_crops_shipped = int(payload.get("total_crops_shipped", 0))
+            self.total_fish_caught = int(payload.get("total_fish_caught", 0))
+            self.total_yields = int(payload.get("total_yields", 0))
+            self.safe_days_streak = int(payload.get("safe_days_streak", 0))
+            self.certification_level = int(payload.get("certification_level", 0))
+            self.unlocked_achievements = list(payload.get("unlocked_achievements", []))
+            self.agv_companion_active = bool(payload.get("agv_companion_active", False))
+            self.agv_cargo = list(payload.get("agv_cargo", []))
 
             # Khôi phục bản đồ và vị trí Robot
             target_map = int(payload.get("current_map_id", 1))

@@ -71,6 +71,10 @@ class World:
         self.robot: Robot | None = None
 
         # Trạng thái Hệ thống Vào Nhà (Indoor / Outdoor Transition)
+        # Mặc định tắt tự động dịch chuyển khi huấn luyện RL điểm-tới-điểm để tránh nhảy hệ quy chiếu
+        self.allow_indoor_transition: bool = bool(
+            world_cfg.get("allow_indoor_transition", False)
+        )
         self.in_indoor_house: bool = False
         self.current_house_name: str = ""
         self.indoor_room_bounds: tuple[float, float, float, float] = (4.5, 4.0, 11.0, 12.0)
@@ -186,8 +190,12 @@ class World:
 
         self._detect_house_portals()
 
-        # Đặt Goal ngay tại Cửa một Ngôi Nhà để Robot tự động đi vào nhà giao hàng rồi đi ra!
-        if self.house_portals and self.current_topology_id in (1, 2, 3, 4):
+        # Chỉ ép Goal vào cửa nhà khi bật chế độ allow_indoor_transition
+        if (
+            self.allow_indoor_transition
+            and self.house_portals
+            and self.current_topology_id in (1, 2, 3, 4)
+        ):
             target_portal = random.choice(self.house_portals)
             cand_goal = (target_portal["door_x"], target_portal["door_y"])
             if self.spawn_manager.check_path_feasibility(
@@ -385,22 +393,26 @@ class World:
         self.static_grid.fill(0)
         half_res = self.grid_res / 2.0
 
-        for r in range(self.grid_rows):
-            cy = (r + 0.5) * self.grid_res
-            for c in range(self.grid_cols):
-                cx = (c + 0.5) * self.grid_res
-                for obj in self.static_objects:
-                    if obj.shape == ShapeType.RECTANGLE:
-                        rx, ry, rw, rh = obj.bbox
-                        if (rx <= cx <= rx + rw) and (ry <= cy <= ry + rh):
+        for obj in self.static_objects:
+            if obj.shape == ShapeType.RECTANGLE:
+                rx, ry, rw, rh = obj.bbox
+                c_min = max(0, int(rx / self.grid_res))
+                c_max = min(self.grid_cols - 1, int((rx + rw) / self.grid_res))
+                r_min = max(0, int(ry / self.grid_res))
+                r_max = min(self.grid_rows - 1, int((ry + rh) / self.grid_res))
+                self.static_grid[r_min : r_max + 1, c_min : c_max + 1] = 1
+            elif obj.shape == ShapeType.CIRCLE:
+                rad = obj.radius + half_res * 0.5
+                c_min = max(0, int((obj.x - rad) / self.grid_res))
+                c_max = min(self.grid_cols - 1, int((obj.x + rad) / self.grid_res))
+                r_min = max(0, int((obj.y - rad) / self.grid_res))
+                r_max = min(self.grid_rows - 1, int((obj.y + rad) / self.grid_res))
+                for r in range(r_min, r_max + 1):
+                    cy = (r + 0.5) * self.grid_res
+                    for c in range(c_min, c_max + 1):
+                        cx = (c + 0.5) * self.grid_res
+                        if math.hypot(cx - obj.x, cy - obj.y) <= rad:
                             self.static_grid[r, c] = 1
-                            break
-                    elif obj.shape == ShapeType.CIRCLE:
-                        if math.hypot(cx - obj.x, cy - obj.y) <= (
-                            obj.radius + half_res * 0.5
-                        ):
-                            self.static_grid[r, c] = 1
-                            break
 
     def update_occupancy_grid(self):
         np.copyto(self.occupancy_grid, self.static_grid)
@@ -496,7 +508,11 @@ class World:
         # ------------------------------------------------------------------
         # KIỂM TRA CHUYỂN CẢNH VÀO NHÀ / RA KHỎI NHÀ & NHIỆM VỤ GIAO HÀNG
         # ------------------------------------------------------------------
-        if not self.in_indoor_house and self.portal_cooldown <= 0.0:
+        if (
+            self.allow_indoor_transition
+            and not self.in_indoor_house
+            and self.portal_cooldown <= 0.0
+        ):
             for portal in self.house_portals:
                 if math.hypot(self.robot.x - portal["door_x"], self.robot.y - portal["door_y"]) <= 0.65:
                     self.enter_house(portal)

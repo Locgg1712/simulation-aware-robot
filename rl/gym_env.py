@@ -8,23 +8,31 @@ from gymnasium import spaces
 import numpy as np
 import yaml
 
-from environment.topology import TRAIN_TOPOLOGIES, VAL_TOPOLOGIES, TEST_TOPOLOGIES
+from environment.topology import (
+    GAME_TOPOLOGIES,
+    TRAIN_TOPOLOGIES,
+    VAL_TOPOLOGIES,
+    TEST_TOPOLOGIES,
+)
 from environment.world import World
 from objects.robot import RobotAction
 from .state_builder import StateBuilder
 from .reward_calculator import RewardCalculator
 
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
 
 class ContextAwareNavEnv(gym.Env):
     """
-    Môi trường chuẩn Gymnasium cho bài toán Context-Aware Robot Navigation:
+    Môi trường chuẩn Gymnasium cho bài toán Context-Aware Robot Navigation
+    trong thế giới FarmBot Town (Maps 1-4) & các kịch bản xã hội (Topologies 5-15):
     - Observation Space: Box(low=-5.0, high=5.0, shape=(106,), dtype=np.float32)
     - Action Space:
         + Discrete(6): FORWARD, TURN_LEFT, TURN_RIGHT, SLOW_DOWN, STOP, WAIT
         + Hoặc Box(2,) nếu bật continuous_actions=True
     """
 
-    metadata = {"render_modes": ["human", "None"], "render_fps": 30}
+    metadata = {"render_modes": ["None"], "render_fps": 30}
 
     def __init__(
         self,
@@ -49,6 +57,7 @@ class ContextAwareNavEnv(gym.Env):
 
         # Khởi tạo World, StateBuilder và RewardCalculator
         self.world = World(self.config)
+        self.world.use_social_astar = self.include_social_context
         self.state_builder = StateBuilder(
             include_social_context=self.include_social_context
         )
@@ -77,7 +86,6 @@ class ContextAwareNavEnv(gym.Env):
         else:
             self.action_space = spaces.Discrete(len(RobotAction))
 
-        self.renderer = None
         self.episode_reward: float = 0.0
         self.last_reward_breakdown: dict = {}
 
@@ -85,15 +93,23 @@ class ContextAwareNavEnv(gym.Env):
     def _load_yaml(path_str: str) -> dict:
         path = Path(path_str)
         if not path.exists():
-            return {}
+            alt = PROJECT_ROOT / path_str
+            if alt.exists():
+                path = alt
+            else:
+                return {}
         with open(path, "r", encoding="utf-8") as f:
             return yaml.safe_load(f) or {}
 
     def _select_topology_id(self) -> int:
         if self.fixed_topology_id is not None:
             return int(self.fixed_topology_id)
+        if self.split == "game":
+            return random.choice(GAME_TOPOLOGIES)
         if self.split == "train":
-            return random.choice(TRAIN_TOPOLOGIES)
+            # Ưu tiên lấy mẫu cả 4 bản đồ Game FarmBot Town (1..4) lẫn các bản đồ Train (5..9)
+            weighted_pool = GAME_TOPOLOGIES + TRAIN_TOPOLOGIES
+            return random.choice(weighted_pool)
         if self.split == "val":
             return random.choice(VAL_TOPOLOGIES)
         if self.split == "test":
@@ -114,6 +130,7 @@ class ContextAwareNavEnv(gym.Env):
         else:
             topo_id = self._select_topology_id()
 
+        self.world.use_social_astar = self.include_social_context
         self.world.reset(seed=seed, topology_id=topo_id)
         self.episode_reward = 0.0
         self.last_reward_breakdown = {
@@ -130,9 +147,6 @@ class ContextAwareNavEnv(gym.Env):
         info = self.world.get_info()
         info["reward_breakdown"] = self.last_reward_breakdown
         info["episode_reward"] = round(self.episode_reward, 2)
-
-        if self.render_mode == "human":
-            self.render()
 
         return obs, info
 
@@ -177,21 +191,10 @@ class ContextAwareNavEnv(gym.Env):
         info["episode_reward"] = round(self.episode_reward, 2)
         info["is_success"] = bool(self.world.is_goal_reached)
 
-        if self.render_mode == "human":
-            self.render()
-
         return obs, float(reward), terminated, truncated, info
 
     def render(self):
-        if self.render_mode != "human":
-            return
-        if self.renderer is None:
-            from visualization.pygame_renderer import PygameRenderer
-
-            self.renderer = PygameRenderer(self.world, self.config)
-        self.renderer.render()
+        return None
 
     def close(self):
-        if self.renderer is not None:
-            self.renderer.close()
-            self.renderer = None
+        pass

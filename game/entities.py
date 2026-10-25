@@ -56,14 +56,29 @@ class HarvestSpot:
     tree_y: float = 0.0
     tree_w: int = 0
     tree_h: int = 0
+    crop_state: str = "ripe"                # "empty" | "growing" | "ripe"
+    days_grown: int = 0
+    days_needed: int = 1
+    watered: bool = False
+    yield_left: int = 1
+    has_sprinkler: bool = False
+    has_scarecrow: bool = False
+    has_bio_sensor: bool = False
 
     @property
     def growth_stage(self) -> int:
-        """Giai đoạn sinh trưởng 0..9 (9 = chín, có thể thu hoạch)."""
-        if self.has_produce:
+        """Giai đoạn sinh trưởng 0..9 (0 = ruộng trống, 1..8 = đang lớn, 9 = chín)."""
+        if str(self.spot_id).startswith("deco_"):
+            if self.has_produce:
+                return 9
+            ratio = 1.0 - (self.regrow_timer / max(0.01, self.regrow_total))
+            return max(1, min(8, 1 + int(ratio * 8)))
+        if self.has_produce or self.crop_state == "ripe":
             return 9
-        ratio = 1.0 - (self.regrow_timer / max(0.01, self.regrow_total))
-        return max(1, min(8, 1 + int(ratio * 8)))
+        if self.kind == "crop_plot" and self.crop_state == "empty":
+            return 0
+        stage = 1 + int(7 * self.days_grown / max(1, self.days_needed))
+        return max(1, min(8, stage))
 
 
 class FarmAnimal:
@@ -174,7 +189,7 @@ class PropObject:
         return pygame.Rect(self.x, self.y, self.sprite.get_width(), self.sprite.get_height())
 
     def draw(self, screen: pygame.Surface, vault: SpriteVault):
-        if self.door_rect is not None:
+        if self.door_rect is not None and self.house_id != "robot_house":
             mat = vault.scaled("red_mat", self.door_rect.width + 8, 20)
             if mat is not None:
                 screen.blit(mat, (self.door_rect.x - 4, self.door_rect.y + 2))
@@ -184,7 +199,12 @@ class PropObject:
 
 
 class FarmCartAGV:
-    """Xe đẩy nông sản tự hành chạy theo làn đường ở Map 2."""
+    """
+    Xe đẩy nông sản tự hành (AGV) hỗ trợ Robot:
+    - Chế độ 'patrol': Chạy tuần tra theo làn đường ở nông trại.
+    - Chế độ 'follow': Đi theo sau Robot làm việc, mang theo thùng hàng phụ 4 ô (tự động hứng nông sản khi khay Robot đầy).
+    - Chế độ 'parked': Đứng yên tại chỗ sau khi được Robot đẩy nhẹ sang một bên.
+    """
 
     def __init__(self, x: float, y: float, waypoints: list[tuple[float, float]]):
         self.x = float(x)
@@ -194,12 +214,80 @@ class FarmCartAGV:
         self.speed = 68.0
         self.radius = 15.0
         self.theta = 0.0
+        self.mode: str = "patrol"  # "patrol" | "follow" | "parked"
+        self.cargo: list[dict] = []
+        self.max_cargo: int = 4
+        self.push_vx: float = 0.0
+        self.push_vy: float = 0.0
 
     @property
     def sort_y(self) -> float:
         return self.y + 12.0
 
-    def update(self, dt: float, robot_x: float, robot_y: float):
+    def apply_push(self, ux: float, uy: float, strength: float = 115.0):
+        """Nhận lực đẩy nhẹ từ Robot khi Robot chạm vào AGV."""
+        self.push_vx = ux * strength
+        self.push_vy = uy * strength
+        if abs(ux) + abs(uy) > 1e-3:
+            self.theta = math.atan2(uy, ux)
+
+    def toggle_follow_mode(self) -> str:
+        """Chuyển đổi giữa chế độ Đi Theo Robot ('follow'), Đứng Yên ('parked') và Tuần Tra ('patrol')."""
+        if self.mode == "patrol":
+            self.mode = "follow"
+        elif self.mode == "follow":
+            self.mode = "parked"
+        else:
+            self.mode = "patrol"
+        return self.mode
+
+    def update(self, dt: float, robot_x: float, robot_y: float, game=None):
+        # 1. Xử lý quán tính khi bị Robot đẩy nhẹ (Push mechanic)
+        if math.hypot(self.push_vx, self.push_vy) > 4.0:
+            nx = self.x + self.push_vx * dt
+            ny = self.y + self.push_vy * dt
+            can_move = True
+            if game is not None and hasattr(game, "is_circle_blocked"):
+                can_move = not game.is_circle_blocked(nx, ny, self.radius * 0.85)
+            else:
+                can_move = (36.0 <= nx <= SCREEN_W - 36.0 and 48.0 <= ny <= SCREEN_H - 48.0)
+            if can_move:
+                self.x, self.y = nx, ny
+            decay = max(0.0, 1.0 - 7.5 * dt)
+            self.push_vx *= decay
+            self.push_vy *= decay
+
+        # 2. Chế độ 'parked': Đứng yên tại vị trí đã đẩy tới
+        if self.mode == "parked":
+            return
+
+        # 3. Chế độ 'follow': Đi theo sau lưng Robot để hỗ trợ chở nông sản
+        if self.mode == "follow":
+            rob_theta = getattr(getattr(game, "robot", None), "theta", self.theta)
+            target_x = robot_x - math.cos(rob_theta) * 46.0
+            target_y = robot_y - math.sin(rob_theta) * 46.0
+            dx, dy = target_x - self.x, target_y - self.y
+            dist_to_target = math.hypot(dx, dy)
+            dist_to_robot = math.hypot(robot_x - self.x, robot_y - self.y)
+            if dist_to_robot <= 44.0 or dist_to_target <= 10.0:
+                return
+            follow_speed = 142.0 if dist_to_robot > 95.0 else 108.0
+            ux, uy = dx / dist_to_target, dy / dist_to_target
+            self.theta = math.atan2(uy, ux)
+            nx = self.x + ux * follow_speed * dt
+            ny = self.y + uy * follow_speed * dt
+            if game is not None and hasattr(game, "is_circle_blocked"):
+                if not game.is_circle_blocked(nx, ny, self.radius * 0.8):
+                    self.x, self.y = nx, ny
+                elif not game.is_circle_blocked(nx, self.y, self.radius * 0.8):
+                    self.x = nx
+                elif not game.is_circle_blocked(self.x, ny, self.radius * 0.8):
+                    self.y = ny
+            else:
+                self.x, self.y = nx, ny
+            return
+
+        # 4. Chế độ 'patrol': Chạy tuần tra theo tuyến đường cố định
         if not self.waypoints:
             return
         if math.hypot(robot_x - self.x, robot_y - self.y) < 44.0:
@@ -214,7 +302,14 @@ class FarmCartAGV:
         self.x += (dx / dist) * self.speed * dt
         self.y += (dy / dist) * self.speed * dt
 
-    def draw(self, screen: pygame.Surface, vault: SpriteVault):
+    def draw(
+        self,
+        screen: pygame.Surface,
+        vault: SpriteVault,
+        font: pygame.font.Font | None = None,
+        robot_x: float = -999.0,
+        robot_y: float = -999.0,
+    ):
         cx, cy = int(round(self.x)), int(round(self.y))
         c, s = math.cos(self.theta), math.sin(self.theta)
         if abs(c) >= abs(s):
@@ -228,6 +323,46 @@ class FarmCartAGV:
         screen.blit(sh, (cx - 17, cy + 6))
         if spr is not None:
             screen.blit(spr, (cx - spr.get_width() // 2, cy - spr.get_height() + 14))
+
+        # Vẽ các nông sản đang chất trên thùng xe AGV
+        if self.cargo:
+            offsets = [(-10, -18), (4, -18), (-10, -8), (4, -8)]
+            for idx, entry in enumerate(self.cargo[:4]):
+                ik = entry.get("item_key", "apple") if isinstance(entry, dict) else str(entry)
+                ico = vault.get_item_icon(ik, 14)
+                if ico is not None:
+                    ox, oy = offsets[idx]
+                    screen.blit(ico, (cx + ox, cy + oy))
+
+        # Vẽ nhãn trạng thái AGV và hướng dẫn tương tác khi đứng gần
+        if font is not None:
+            dist_rob = math.hypot(robot_x - self.x, robot_y - self.y)
+            if self.mode == "follow":
+                tag = f"[AGV ĐI THEO: {len(self.cargo)}/{self.max_cargo}]"
+                t_col = (115, 255, 165)
+                b_col = (65, 215, 120)
+            elif self.mode == "parked":
+                tag = f"[AGV ĐANG ĐỖ: {len(self.cargo)}/{self.max_cargo}]"
+                t_col = (255, 225, 125)
+                b_col = (215, 165, 65)
+            elif dist_rob <= 76.0 or self.cargo:
+                tag = f"Xe Kéo AGV ({len(self.cargo)}/{self.max_cargo}) — [E]/[C] Gọi Đi Theo"
+                t_col = (235, 242, 255)
+                b_col = (145, 185, 225)
+            else:
+                tag = ""
+                t_col = (255, 255, 255)
+                b_col = (120, 120, 120)
+
+            if tag:
+                lbl = font.render(tag, True, t_col)
+                bx = max(6, min(screen.get_width() - lbl.get_width() - 12, cx - lbl.get_width() // 2 - 4))
+                by = max(6, cy - 46)
+                bg = pygame.Surface((lbl.get_width() + 8, 17), pygame.SRCALPHA)
+                bg.fill((22, 28, 34, 215))
+                screen.blit(bg, (bx, by))
+                pygame.draw.rect(screen, b_col, (bx, by, lbl.get_width() + 8, 17), 1, border_radius=4)
+                screen.blit(lbl, (bx + 4, by + 1))
 
 
 class VillagerNPC:
@@ -271,6 +406,7 @@ class VillagerNPC:
         self.emote_timer = 0.0
         self.yield_reward_cooldown = 0.0
         self.intrusion_step_cooldown = 0.0
+        self.is_home_at_night = False
 
     @property
     def sort_y(self) -> float:
@@ -285,6 +421,10 @@ class VillagerNPC:
         self.emote_timer = max(self.emote_timer, duration)
 
     def update(self, dt: float, game):
+        if getattr(self, "is_home_at_night", False):
+            self.vx = 0.0
+            self.vy = 0.0
+            return
         if self.emote_timer > 0.0:
             self.emote_timer = max(0.0, self.emote_timer - dt)
             if self.emote_timer <= 0.0:
@@ -358,6 +498,8 @@ class VillagerNPC:
         sim_time: float,
         quest_marker: str | None = None,
     ):
+        if getattr(self, "is_home_at_night", False):
+            return
         cx, cy = int(round(self.x)), int(round(self.y))
 
         sh = pygame.Surface((28, 11), pygame.SRCALPHA)
@@ -493,6 +635,9 @@ class RobotPlayer:
 
         self.inventory: list[str] = []
         self.max_inventory = 4
+        self.battery: float = 100.0
+        self.max_battery: float = 100.0
+        self.is_charging: bool = False
         self.anim_timer = 0.0
 
     @property

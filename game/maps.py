@@ -291,6 +291,45 @@ INTERIOR_THEMES: dict[str, dict] = {
         ],
         "display_items": [("fish", 0.24, 0.51), ("fish", 0.76, 0.63)],
     },
+    "robot_house": {
+        "subtitle": "Xưởng Cải Tiến Công Nghệ & Trạm Sạc Pin Của Robot",
+        "room_size": (704, 440),
+        "floor_tint": (198, 206, 218),
+        "wall_tint": (215, 225, 238),
+        "border_col": (235, 132, 42),
+        "rug_tint": (110, 205, 235),
+        "furniture": [
+            # Hệ thống tường kỹ thuật phía Bắc
+            ("rh_wall_vent", 0.10, 0.12, 68, 86),
+            ("rh_wall_screen", 0.22, 0.12, 62, 86),
+            ("rh_whiteboard", 0.40, 0.12, 138, 72),
+            ("rh_wall_doors", 0.61, 0.12, 126, 86),
+            ("rh_server_1", 0.77, 0.14, 44, 86),
+            ("rh_server_2", 0.84, 0.14, 44, 86),
+            ("rh_cooling_unit", 0.93, 0.14, 68, 66),
+            # Khu vực Trạm Cánh Tay Cải Tiến Robot (Bên Trái)
+            ("rh_shelf_parts", 0.09, 0.36, 70, 116),
+            ("rh_shelf_wide", 0.09, 0.64, 90, 100),
+            ("rh_tool_cabinet", 0.19, 0.32, 52, 74),
+            ("rh_upgrade_station", 0.27, 0.54, 118, 148),
+            ("rh_workbench_green", 0.25, 0.82, 84, 86),
+            ("rh_crate_open", 0.10, 0.86, 76, 44),
+            # Khu vực Bàn Thiết Kế & Máy Chủ Trung Tâm
+            ("rh_computer_desk", 0.50, 0.30, 96, 88),
+            ("rh_round_table", 0.48, 0.68, 96, 78),
+            ("rh_stool_1", 0.40, 0.68, 30, 32),
+            ("rh_stool_2", 0.56, 0.68, 30, 34),
+            # Khu vực Đế Sạc Pin & Ngủ Tia Chớp (Bên Phải)
+            ("rh_solder_station", 0.74, 0.30, 82, 62),
+            ("rh_diag_table", 0.90, 0.32, 90, 54),
+            ("rh_charging_dock", 0.77, 0.56, 108, 102),
+            ("rh_battery_box", 0.91, 0.52, 38, 42),
+            ("rh_extinguisher", 0.92, 0.66, 32, 62),
+            ("rh_plant_tall", 0.91, 0.82, 52, 76),
+            ("rh_barrel_blue1", 0.66, 0.84, 38, 56),
+        ],
+        "display_items": [],
+    },
 }
 
 
@@ -370,8 +409,8 @@ def _build_map1_town_square(game, wb: WorldBuilder, spawn_pos, spawn_theta):
         MapPortal(
             rect=pygame.Rect(15 * T, 0, 4 * T, 24),
             target_map_id=2,
-            spawn_x=17.0 * T,
-            spawn_y=SCREEN_H - 76.0,
+            spawn_x=17.5 * T,
+            spawn_y=SCREEN_H - 68.0,
             spawn_theta=-math.pi / 2.0,
             label="▲ Lên Map 2: Đại Nông Trại",
             arrow_dir="up",
@@ -548,6 +587,7 @@ def _build_map2_orchard_farm(game, wb: WorldBuilder, spawn_pos, spawn_theta):
     # 2. Hệ thống đường lát đá & đường đất nông trại (giống Ảnh 2)
     wb.fill(3, 9, 34, 10, T_COBBLE)
     wb.fill(16, 4, 18, 23, T_COBBLE)
+    wb.fill(14, 11, 16, 15, T_COBBLE)  # Sân đá Quầy Hạt Giống Cô Caroline
     wb.fill(4, 16, 33, 17, T_DIRT)
 
     # Cổng phía Nam về Map 1
@@ -577,16 +617,17 @@ def _build_map2_orchard_farm(game, wb: WorldBuilder, spawn_pos, spawn_theta):
     wb.building(
         "house_farm", 26.2 * T, 7.8 * T, 0.92,
         house_id="farm_house", interior_type="farmhouse",
-        title="Nhà Chính Nông Trại", owner_name="Kỹ sư Demetrius",
-        owner_folder="npc_13_scholar", owner_role="Chuyên gia Cây trồng",
+        title="Nhà Chính Nông Trại", owner_name="Cô Leah",
+        owner_folder="npc_04_green_hair", owner_role="Nghệ nhân & Chăm sóc vườn",
     )
     wb.prop("mailbox", 28.8 * T, 8.0 * T, h=46)
+    wb.prop("crate", 29.8 * T, 8.2 * T, w=42, h=38)  # Thùng Giao Hàng Nông Trại (Shipping Bin)
     wb.prop("barrel", 22.4 * T, 7.9 * T, h=42)
     wb.prop("crate", 23.1 * T, 8.1 * T, h=38)
 
     # 4. SÁU THỬA RUỘNG CÂY TRỒNG CÓ RÀO GỖ, VÒI TƯỚI (SPRINKLER) & BÙ NHÌN (SCARECROW)
     wb.field(
-        19, 11, 23, 14, "strawberry",
+        20, 11, 23, 14, "strawberry",
         spot_id="crop_straw_1", title="Ruộng Dâu Tây Đỏ", item_key="strawberry",
         fence=True, sprinkler=True, scarecrow=True,
     )
@@ -601,7 +642,7 @@ def _build_map2_orchard_farm(game, wb: WorldBuilder, spawn_pos, spawn_theta):
         fence=True, scarecrow=True,
     )
     wb.field(
-        19, 18, 23, 21, "tomato",
+        20, 18, 23, 21, "tomato",
         spot_id="crop_tom_1", title="Ruộng Cà Chua Chín", item_key="tomato",
         fence=True, sprinkler=True,
     )
@@ -625,14 +666,16 @@ def _build_map2_orchard_farm(game, wb: WorldBuilder, spawn_pos, spawn_theta):
     wb.fruit_tree("tree_peach_2", "Cây Đào Tiên #2", "peach", 31.8 * T, 18.8 * T, "tree_cherry", h=108)
 
     # 6. KHU CHĂN NUÔI GIA SÚC (Chuồng Bò, Chuồng Gà, Đồng Cỏ Có Hàng Rào & Ao Cá)
-    wb.building("house_coop", 5.0 * T, 20.2 * T, 0.82, door=False)
-    wb.building("house_barn", 9.4 * T, 20.4 * T, 0.82, door=False)
+    wb.building("house_coop", 4.8 * T, 20.2 * T, 0.82, door=False)
+    wb.building("house_barn", 8.8 * T, 20.4 * T, 0.82, door=False)
     wb.pasture(
-        11, 18, 15, 22,
+        10, 18, 14, 22,
         animals=[("cow", 44), ("pig", 38), ("sheep", 40), ("chicken", 30), ("chicken", 30)],
         gate_col=12,
     )
     wb.prop("fishpond", 32.5 * T, 22.8 * T, w=118, h=96, collider_w=0.85, collider_h=64, kind="pond")
+    wb.prop("crate", 14.2 * T, 12.1 * T, h=36, solid=False)
+    wb.prop("barrel", 15.7 * T, 11.9 * T, h=40, solid=False)
     wb.prop("sunflower", 18.4 * T, 15.2 * T, h=42, solid=False)
     wb.prop("sunflower", 24.4 * T, 15.2 * T, h=42, solid=False)
 
@@ -651,6 +694,15 @@ def _build_map2_orchard_farm(game, wb: WorldBuilder, spawn_pos, spawn_theta):
             x=14.8 * T,
             y=8.8 * T,
             folder="npc_brown",
+            theta=math.pi / 2.0,
+            is_stationary=True,
+        ),
+        VillagerNPC(
+            name="Cô Caroline",
+            role="Cửa Hàng Hạt Giống [E]",
+            x=15.0 * T,
+            y=12.5 * T,
+            folder="npc_purple",
             theta=math.pi / 2.0,
             is_stationary=True,
         ),
@@ -699,7 +751,7 @@ def _build_map2_orchard_farm(game, wb: WorldBuilder, spawn_pos, spawn_theta):
         game.robot.x, game.robot.y = spawn_pos
         game.robot.theta = spawn_theta if spawn_theta is not None else -math.pi / 2.0
     else:
-        game.robot.x, game.robot.y = 17.0 * T, SCREEN_H - 76.0
+        game.robot.x, game.robot.y = 17.5 * T, SCREEN_H - 68.0
         game.robot.theta = -math.pi / 2.0
 
 
@@ -746,7 +798,7 @@ def _build_map3_lakeside_fishing(game, wb: WorldBuilder, spawn_pos, spawn_theta)
     wb.building(
         "house_shed", 5.2 * T, 6.6 * T, 0.94,
         house_id="fisher_shed", interior_type="cabin",
-        title="Chòi Ngư Cụ Ven Hồ", owner_name="Thợ câu Leo",
+        title="Chòi Ngư Cụ Ven Hồ", owner_name="Chàng mèo Leo",
         owner_folder="npc_10_cat_boy", owner_role="Ngư dân trẻ",
     )
     wb.field(
@@ -878,10 +930,12 @@ def _build_map4_residential_village(game, wb: WorldBuilder, spawn_pos, spawn_the
     wb.ellipse(4.5, 22.0, 5.0, 2.4, T_SAND)
     wb.ellipse(4.5, 22.3, 4.0, 1.7, T_WATER)
 
-    # 2. Đại lộ lát đá chính nối sang Cổng Đông (Map 1) & Đường nhánh vào 4 Dinh Thự
+    # 2. Đại lộ lát đá chính nối sang Cổng Đông (Map 1) & Đường nhánh vào 4 Dinh Thự + Xưởng Robot
     wb.fill(3, 11, 35, 13, T_COBBLE)
     wb.fill(8, 7, 10, 19, T_DIRT)
-    wb.fill(23, 7, 25, 19, T_DIRT)
+    wb.fill(22, 7, 24, 19, T_DIRT)
+    wb.fill(26, 14, 28, 21, T_COBBLE)
+    wb.fill(26, 20, 33, 21, T_COBBLE)
 
     # Cổng phía Đông quay về Map 1
     game.portals.append(
@@ -896,7 +950,7 @@ def _build_map4_residential_village(game, wb: WorldBuilder, spawn_pos, spawn_the
         )
     )
 
-    # 3. BỐN NGÔI NHÀ CƯ DÂN (Mỗi nhà có sân vườn riêng & Nội thất Map 5 hoàn toàn khác nhau!)
+    # 3. NĂM TÒA NHÀ KHU DÂN CƯ (4 Nhà Cư Dân + Xưởng & Nhà Robot Số 5 tại khoảng trống Đông-Nam!)
     wb.building(
         "house_farm", 8.8 * T, 7.6 * T, 0.94,
         house_id="house_gus", interior_type="gus_kitchen",
@@ -916,13 +970,19 @@ def _build_map4_residential_village(game, wb: WorldBuilder, spawn_pos, spawn_the
         owner_folder="npc_07_old_man", owner_role="Ngư dân kỳ cựu",
     )
     wb.building(
-        "house_manor", 24.2 * T, 19.8 * T, 0.95,
+        "house_manor", 22.8 * T, 19.8 * T, 0.95,
         house_id="house_lewis", interior_type="lewis_manor",
         title="Dinh Thự Thị Trưởng Lewis (Số 4)", owner_name="Thị trưởng Lewis",
         owner_folder="npc_13_scholar", owner_role="Thị trưởng Thị trấn",
     )
+    wb.building(
+        "house_robot", 31.4 * T, 19.8 * T, 0.28,
+        house_id="robot_house", interior_type="robot_workshop",
+        title="Xưởng & Nhà Robot (Số 5)", owner_name="Thợ mộc Robin",
+        owner_folder="npc_06_farmer_girl", owner_role="Kiến trúc sư & Cải tiến Robot",
+    )
 
-    # 4. Sân vườn riêng trước mỗi ngôi nhà (Vườn rau gia đình, hàng rào trắng, hồ cá, mèo con)
+    # 4. Sân vườn riêng trước mỗi ngôi nhà (Vườn rau gia đình, hàng rào trắng, hồ cá, mèo con, cọc tiêu Xưởng Robot)
     wb.field(
         13, 4, 16, 6, "tomato",
         spot_id="village_tom_1", title="Vườn Cà Chua Nhà Gus", item_key="tomato",
@@ -934,8 +994,10 @@ def _build_map4_residential_village(game, wb: WorldBuilder, spawn_pos, spawn_the
         fence=True,
     )
     wb.flower_bed(14, 16, 17, 17)
-    wb.flower_bed(29, 16, 32, 17)
-    wb.fence_h(19, 28, 20, style="picket", gaps=(23, 24))
+    wb.fence_h(19, 25, 20, style="picket", gaps=(22, 23))
+    wb.prop("rh_bollard", 29.0 * T, 20.1 * T, h=42)
+    wb.prop("rh_bollard", 33.8 * T, 20.1 * T, h=42)
+    wb.prop("rh_sensor_post", 29.0 * T, 15.8 * T, h=52)
 
     wb.prop("fishpond", 14.8 * T, 21.8 * T, w=116, h=92, collider_w=0.85, collider_h=60, kind="pond")
     wb.prop("well", 16.5 * T, 10.2 * T, h=72)
@@ -943,9 +1005,9 @@ def _build_map4_residential_village(game, wb: WorldBuilder, spawn_pos, spawn_the
     wb.prop("mailbox", 11.8 * T, 7.8 * T, h=46)
     wb.prop("mailbox", 26.8 * T, 7.8 * T, h=46)
     wb.prop("mailbox", 11.6 * T, 19.8 * T, h=46)
-    wb.prop("mailbox", 27.6 * T, 19.8 * T, h=46)
+    wb.prop("mailbox", 25.8 * T, 19.8 * T, h=46)
     wb.prop("log", 28.2 * T, 7.8 * T, h=38)
-    wb.prop("cat", 21.5 * T, 19.5 * T, h=36, solid=False)
+    wb.prop("cat", 20.4 * T, 19.5 * T, h=36, solid=False)
     wb.lamp(6.2 * T, 10.6 * T)
     wb.lamp(19.5 * T, 10.6 * T)
     wb.lamp(30.5 * T, 10.6 * T)
@@ -955,7 +1017,6 @@ def _build_map4_residential_village(game, wb: WorldBuilder, spawn_pos, spawn_the
         (19.2 * T, 6.8 * T, "tree_oak"),
         (33.2 * T, 8.2 * T, "tree_cherry"),
         (3.2 * T, 17.5 * T, "tree_oak"),
-        (33.0 * T, 21.2 * T, "tree_cherry"),
     ]:
         wb.tree(tk, cx, cy, h=114)
 
@@ -1040,14 +1101,14 @@ def get_interior_theme(building: PropObject | None) -> dict:
     return INTERIOR_THEMES.get(building.house_id, INTERIOR_THEMES["farm_house"])
 
 
-def enter_house(game, building: PropObject):
+def enter_house(game, building: PropObject, spawn_on_dock: bool = False):
     """Chuyển từ Map ngoài trời vào Map 5: Không Gian Nội Thất Trong Nhà (mỗi nhà 1 giao diện riêng)."""
     game.saved_outdoor_map_id = game.current_map_id
     game.saved_outdoor_pos = (
         float(building.door_rect.centerx),
         float(building.door_rect.bottom + 24),
     )
-    game.saved_outdoor_theta = math.pi / 2.0
+    game.saved_outdoor_theta = -math.pi / 2.0
 
     game.in_interior = True
     game.current_interior = building
@@ -1058,29 +1119,42 @@ def enter_house(game, building: PropObject):
     game.room_rect = pygame.Rect((SCREEN_W - rw) // 2, (SCREEN_H - rh) // 2 + 34, rw, rh)
     rx, ry = game.room_rect.x, game.room_rect.y
 
-    # Đặt Robot ở tấm thảm đỏ lối vào trong nhà
-    game.robot.x = float(game.room_rect.centerx)
-    game.robot.y = float(ry + rh - 52)
-    game.robot.theta = -math.pi / 2.0
+    # Nếu là Xưởng & Nhà Robot và spawn_on_dock=True -> Đặt Robot đứng ngay trên Đế Sạc Tia Chớp
+    if getattr(building, "house_id", "") == "robot_house" and spawn_on_dock:
+        game.robot.x = float(rx + int(rw * 0.77))
+        game.robot.y = float(ry + int(rh * 0.56))
+        game.robot.theta = math.pi / 2.0
+    else:
+        # Đặt Robot ở tấm thảm lối vào trong nhà
+        game.robot.x = float(game.room_rect.centerx)
+        game.robot.y = float(ry + rh - 52)
+        game.robot.theta = -math.pi / 2.0
     game.robot.v_mps = 0.0
     game.robot.vx, game.robot.vy = 0.0, 0.0
 
-    # Đặt Chủ nhà đứng giữa phòng, mặt hướng về phía cửa (theta = pi/2)
-    host = VillagerNPC(
-        name=building.owner_name,
-        role=building.owner_role,
-        x=float(rx + rw * 0.50),
-        y=float(ry + rh * 0.45),
-        folder=building.owner_folder,
-        theta=math.pi / 2.0,
-        is_stationary=True,
-    )
-    host.trigger_emote("♥", 2.5)
-    game.interior_npcs = [host]
-    game.set_banner(
-        f"Đã vào {building.title} — Tiến vào Quạt Xanh trước mặt {building.owner_name} rồi bấm [E]",
-        (255, 240, 165),
-    )
+    if getattr(building, "house_id", "") == "robot_house":
+        game.interior_npcs = []
+        game.set_banner(
+            "Xưởng & Nhà Robot: Bấm [E]/[U] tại Cánh Tay Robot (Trái) để Nâng cấp, hoặc [E]/[N] tại Đế Sạc (Phải) để Sạc & Ngủ!",
+            (135, 245, 255),
+        )
+    else:
+        # Đặt Chủ nhà đứng giữa phòng, mặt hướng về phía cửa (theta = pi/2)
+        host = VillagerNPC(
+            name=building.owner_name,
+            role=building.owner_role,
+            x=float(rx + rw * 0.50),
+            y=float(ry + rh * 0.45),
+            folder=building.owner_folder,
+            theta=math.pi / 2.0,
+            is_stationary=True,
+        )
+        host.trigger_emote("♥", 2.5)
+        game.interior_npcs = [host]
+        game.set_banner(
+            f"Đã vào {building.title} — Tiến vào Quạt Xanh trước mặt {building.owner_name} rồi bấm [E]",
+            (255, 240, 165),
+        )
 
 
 def exit_house(game):

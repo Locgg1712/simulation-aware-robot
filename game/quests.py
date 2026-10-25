@@ -8,7 +8,9 @@ Hệ thống Nhiệm vụ (Quests) & Tương tác Phím [E] trong FarmBot Town:
 
 from __future__ import annotations
 
+import json
 import math
+import os
 import random
 from dataclasses import dataclass
 import pygame
@@ -25,15 +27,21 @@ from .constants import (
     px_to_m,
 )
 from .entities import HarvestSpot, VillagerNPC
+from .farming import (
+    SEED_VENDOR_NAME,
+    is_harvestable_plot,
+    is_within_harvest_reach,
+    reach_distance,
+)
 from .safety_hri import check_front_interaction
 from .stardew_systems import try_use_shipping_bin
 
 
 @dataclass
 class Quest:
-    """Cấu trúc một nhiệm vụ trong FarmBot Town."""
+    """Cấu trúc một nhiệm vụ trong FarmBot Town (đồng bộ với game/data/quests.json)."""
     quest_id: str
-    category: str          # "harvest" | "fishing" | "express"
+    category: str          # "harvest" | "fishing" | "express" | "special"
     title: str
     giver_name: str
     giver_map: int
@@ -47,6 +55,12 @@ class Quest:
     status: str = "available"  # "available" -> "accepted" -> "completed"
     bonus_timer: float = 0.0
     bonus_time_limit: float = 0.0
+    reward_gold: int = 60
+    reward_score: int = 150
+    min_hearts: int = 0
+    season_req: str = ""
+    min_quality: int = 0
+    special: bool = False
 
     @property
     def state(self) -> str:
@@ -62,7 +76,49 @@ class Quest:
         return self.item_key in inventory
 
 
-def build_default_quests() -> list[Quest]:
+def build_default_quests(quests_db: list[dict] | None = None) -> list[Quest]:
+    """Khởi tạo danh sách nhiệm vụ từ game/data/quests.json (kèm dự phòng an toàn)."""
+    if quests_db is None:
+        json_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "quests.json")
+        if os.path.isfile(json_path):
+            try:
+                with open(json_path, "r", encoding="utf-8") as f:
+                    quests_db = json.load(f)
+            except Exception:
+                quests_db = None
+
+    if isinstance(quests_db, list) and len(quests_db) > 0:
+        loaded: list[Quest] = []
+        for d in quests_db:
+            if not isinstance(d, dict):
+                continue
+            loaded.append(
+                Quest(
+                    quest_id=str(d.get("quest_id", "q_custom")),
+                    category=str(d.get("category", "harvest")),
+                    title=str(d.get("title", "Nhiệm vụ")),
+                    giver_name=str(d.get("giver_name", "Bà Evelyn")),
+                    giver_map=int(d.get("giver_map", 1)),
+                    receiver_name=str(d.get("receiver_name", "Đầu bếp Gus")),
+                    receiver_map=int(d.get("receiver_map", 5)),
+                    receiver_house_id=str(d.get("receiver_house_id", "")),
+                    receiver_place=str(d.get("receiver_place", "")),
+                    item_key=str(d.get("item_key", "apple")),
+                    item_label=str(d.get("item_label", "Táo Đỏ Chín")),
+                    source_hint=str(d.get("source_hint", "")),
+                    bonus_timer=float(d.get("bonus_timer", 0.0)),
+                    bonus_time_limit=float(d.get("bonus_time_limit", 0.0)),
+                    reward_gold=int(d.get("reward_gold", 60)),
+                    reward_score=int(d.get("reward_score", 150)),
+                    min_hearts=int(d.get("min_hearts", 0)),
+                    season_req=str(d.get("season_req", "")),
+                    min_quality=int(d.get("min_quality", 0)),
+                    special=bool(d.get("special", False)),
+                )
+            )
+        if loaded:
+            return loaded
+
     return [
         Quest(
             quest_id="q1_fruit",
@@ -120,7 +176,7 @@ def build_default_quests() -> list[Quest]:
             receiver_place="Đường Làng Khu Dân Cư (Map 4 Ngoài Trời)",
             item_key="strawberry",
             item_label="Dâu Tây Đỏ",
-            source_hint="Tới Ruộng Dâu Tây (Map 1 hoặc Map 2) bấm [E] 1.5s (+30đ)",
+            source_hint="Mua hạt Dâu Tây ở Cô Caroline (Map 2) -> Trồng [E] vào ruộng trống -> Tưới [E] mỗi ngày (3 ngày chín)",
         ),
         Quest(
             quest_id="q5_pumpkin",
@@ -134,9 +190,9 @@ def build_default_quests() -> list[Quest]:
             receiver_place="Nhà Ngư Phủ Willy (Map 4 -> Vào Nhà Map 5)",
             item_key="pumpkin",
             item_label="Bí Ngô Vàng",
-            source_hint="Tới Ruộng Bí Ngô (Map 2 hoặc Map 4) bấm [E] 1.5s (+30đ)",
-            bonus_timer=95.0,
-            bonus_time_limit=95.0,
+            source_hint="Mua hạt Bí Ngô ở Cô Caroline (Map 2) -> Trồng [E] vào ruộng trống -> Tưới [E] mỗi ngày (4 ngày chín)",
+            bonus_timer=0.0,
+            bonus_time_limit=0.0,
         ),
         Quest(
             quest_id="q6_special_spring",
@@ -182,7 +238,7 @@ def build_default_quests() -> list[Quest]:
             receiver_place="Đường lát đá Đại Nông Trại (Map 2 Ngoài Trời — Marnie đang đi tuần)",
             item_key="wheat",
             item_label="Lúa Mì Vàng",
-            source_hint="Tới Ruộng Lúa Mì góc Đông-Bắc Map 2 bấm [E] 1.5s rồi đuổi theo Marnie đang đi tuần",
+            source_hint="Mua hạt Lúa Mì ở Cô Caroline (Map 2) -> Trồng [E] -> Tưới [E] (1 ngày chín), rồi giao cho Marnie",
         ),
         Quest(
             quest_id="q9_fish_leo",
@@ -218,15 +274,8 @@ def build_default_quests() -> list[Quest]:
 
 
 def distance_to_harvest_spot(rx: float, ry: float, spot: HarvestSpot) -> float:
-    """Khoảng cách từ Robot tới điểm thu hoạch hoặc mép thửa ruộng gần nhất."""
-    d_point = math.hypot(spot.x - rx, spot.y - ry)
-    if spot.field_rect is not None:
-        r = spot.field_rect
-        cx = max(r.left, min(rx, r.right))
-        cy = max(r.top, min(ry, r.bottom))
-        d_rect = math.hypot(rx - cx, ry - cy)
-        return min(d_point, d_rect)
-    return d_point
+    """Khoảng cách chuẩn từ Robot tới điểm thu hoạch (cây quả) hoặc hình chữ nhật thửa ruộng."""
+    return reach_distance(rx, ry, spot)
 
 
 def handle_interact_action(game):
@@ -262,15 +311,23 @@ def handle_interact_action(game):
                 game.audio.play_sfx("harvest")
             return
         if game.state.try_pickup_forage(game):
-            if getattr(game, "audio", None) is not None:
-                game.audio.play_sfx("harvest")
-            if getattr(game, "vfx", None) is not None:
-                game.vfx.push_toast("Khám Phá Dã Ngoại!", "Đã nhặt vật phẩm tự nhiên (+25đ)", "mushroom")
             return
 
     # 0d. Kiểm tra tương tác với Sự Kiện Ngẫu Nhiên (Random World Events - Phím [E])
     if getattr(game, "random_events", None) is not None:
         if game.random_events.try_interact_event(game):
+            return
+
+    # 0e. Kiểm tra tương tác với Xe AGV Nông Trại (Gọi đi theo / Đỗ lại / Lấy hàng từ thùng AGV)
+    if getattr(game, "state", None) is not None and hasattr(game.state, "try_interact_agv"):
+        if game.state.try_interact_agv(game):
+            return
+
+    # 0f. Kiểm tra tương tác bên trong Xưởng & Nhà Robot (Cánh Tay Nâng Cấp [E] & Đế Sạc Ngủ [E])
+    if getattr(game, "state", None) is not None:
+        if hasattr(game.state, "try_interact_upgrade_station") and game.state.try_interact_upgrade_station(game):
+            return
+        if hasattr(game.state, "try_interact_charging_dock") and game.state.try_interact_charging_dock(game):
             return
 
     # 1. Nếu đang câu cá ở trạng thái cá cắn câu ('biting') -> Mở Mini-game Thanh Câu Cá Stardew Valley!
@@ -333,7 +390,11 @@ def handle_interact_action(game):
                 return
 
     # 3. Kiểm tra giao tiếp với NPC gần nhất (Áp dụng Vùng Quạt Xanh trước mặt NPC)
-    active_npcs = game.interior_npcs if game.in_interior else game.npcs
+    active_npcs = (
+        game.interior_npcs
+        if game.in_interior
+        else [n for n in game.npcs if not getattr(n, "is_home_at_night", False)]
+    )
     if active_npcs:
         nearest_npc = min(
             active_npcs,
@@ -345,25 +406,33 @@ def handle_interact_action(game):
             return
 
     # 4. Kiểm tra Điểm Hái Trái Cây / Thửa Ruộng Nông Sản
+    agv_has_space = any(
+        (getattr(a, "mode", "patrol") == "follow" or math.hypot(a.x - game.robot.x, a.y - game.robot.y) <= 95.0)
+        and len(getattr(a, "cargo", [])) < getattr(a, "max_cargo", 4)
+        for a in getattr(game, "agvs", [])
+    )
     if not game.in_interior and game.harvest_spots:
         nearest_h = min(
             game.harvest_spots,
-            key=lambda h: distance_to_harvest_spot(game.robot.x, game.robot.y, h),
+            key=lambda h: reach_distance(game.robot.x, game.robot.y, h),
         )
-        if distance_to_harvest_spot(game.robot.x, game.robot.y, nearest_h) <= 78.0:
+        if is_within_harvest_reach(game.robot.x, game.robot.y, nearest_h):
+            if is_harvestable_plot(nearest_h) and getattr(game, "farming", None) is not None:
+                if game.farming.try_field_action(game, nearest_h):
+                    return
             if not nearest_h.has_produce:
                 game.set_banner(
-                    f"{nearest_h.title} đang mọc lại, hãy thử cây hoặc ruộng bên cạnh!",
+                    f"{nearest_h.title} đã thu hoạch hết hôm nay, quả sẽ chín lại vào sáng mai!",
                     (255, 205, 115),
                 )
-            elif len(game.robot.inventory) >= game.robot.max_inventory:
-                game.set_banner("Khay 4 ô chứa đồ đã đầy! Hãy đi giao hàng trước khi thu hoạch tiếp.", (255, 175, 95))
+            elif len(game.robot.inventory) >= game.robot.max_inventory and not agv_has_space:
+                game.set_banner("Khay chứa đồ đã đầy! Hãy đi giao hàng hoặc gọi Xe AGV [C] đi theo chở phụ.", (255, 175, 95))
             else:
                 game.robot.harvest_target = nearest_h
                 game.robot.harvest_timer = 0.0
                 game.robot.v_mps = 0.0
                 game.set_banner(
-                    f"Đang thu hoạch {ITEM_NAMES_VI[nearest_h.item_key]} tại {nearest_h.title} (1.5s)...",
+                    f"Đang thu hoạch {ITEM_NAMES_VI.get(nearest_h.item_key, nearest_h.item_key)} tại {nearest_h.title} (1.5s)...",
                     (158, 242, 148),
                 )
             return
@@ -375,8 +444,8 @@ def handle_interact_action(game):
             key=lambda f: math.hypot(f.stand_x - game.robot.x, f.stand_y - game.robot.y),
         )
         if math.hypot(nearest_f.stand_x - game.robot.x, nearest_f.stand_y - game.robot.y) <= 78.0:
-            if len(game.robot.inventory) >= game.robot.max_inventory:
-                game.set_banner("Khay 4 ô chứa đồ đã đầy! Hãy đi giao bớt đồ trước khi câu cá.", (255, 175, 95))
+            if len(game.robot.inventory) >= game.robot.max_inventory and not agv_has_space:
+                game.set_banner("Khay chứa đồ đã đầy! Hãy đi giao bớt đồ hoặc gọi Xe AGV [C] chở phụ.", (255, 175, 95))
             else:
                 game.robot.fishing_spot = nearest_f
                 game.robot.fishing_state = "waiting"
@@ -430,13 +499,32 @@ def _interact_with_npc(game, npc: VillagerNPC):
             )
         return
 
+    # 0. Nếu là Cửa Hàng Hạt Giống Cô Caroline (Map 2) -> Mở Cửa Hàng Hạt Giống ngay!
+    if npc.name == SEED_VENDOR_NAME and getattr(game, "farming", None) is not None:
+        npc.trigger_emote("♪", 2.0)
+        if getattr(game, "dialogue", None) is not None:
+            game.dialogue.adjust_friendship(npc.name, 15)
+        game.farming.open_shop(game)
+        return
+
     q = game.active_quest
 
     # 1. Kiểm tra Giao Vật Phẩm Nhiệm Vụ (Deliver Item)
     if q.status == "accepted" and q.receiver_name == npc.name:
         in_right_place = (
-            (q.receiver_map == 5 and game.in_interior)
-            or (q.receiver_map != 5 and not game.in_interior)
+            (
+                q.receiver_map == 5
+                and game.in_interior
+                and (
+                    not q.receiver_house_id
+                    or getattr(getattr(game, "current_interior", None), "house_id", "") == q.receiver_house_id
+                )
+            )
+            or (
+                q.receiver_map != 5
+                and not game.in_interior
+                and game.current_map_id == q.receiver_map
+            )
         )
         if in_right_place and q.item_key in game.robot.inventory:
             delivered_key = q.item_key
@@ -456,13 +544,18 @@ def _interact_with_npc(game, npc: VillagerNPC):
 
             npc.handoff_timer = 1.4
             npc.trigger_emote("♥", 3.0)
-            pts = int(round((SCORE_DELIVER_INDOOR if game.in_interior else SCORE_DELIVER_OUTDOOR) * quality_mult))
+            base_pts = max(
+                getattr(q, "reward_score", 0),
+                SCORE_DELIVER_INDOOR if game.in_interior else SCORE_DELIVER_OUTDOOR,
+            )
+            pts = int(round(base_pts * quality_mult))
             place_label = "Trong Nhà Map 5" if game.in_interior else "Ngoài Trời"
             game.add_score(pts, f"Giao {delivered_name}{star_lbl} ({place_label})!")
-            gold_bonus = int(round(60 * quality_mult))
+            base_gold = max(45, getattr(q, "reward_gold", 60))
+            gold_bonus = int(round(base_gold * quality_mult))
             if q.bonus_time_limit > 0.0 and q.bonus_timer > 0.0:
                 game.add_score(SCORE_EXPRESS_BONUS, "Thưởng Giao Nhanh Đúng Giờ!")
-                gold_bonus += 25
+                gold_bonus += 15
             game.gold = getattr(game, "gold", 0) + gold_bonus
             if getattr(game, "state", None) is not None:
                 game.state.daily_gold_earned += gold_bonus
@@ -478,9 +571,25 @@ def _interact_with_npc(game, npc: VillagerNPC):
                 )
             game.completed_quests_count += 1
             completed_title = q.title
-            q.status = "available"
+            q.status = "completed"
             q.bonus_timer = q.bonus_time_limit
-            game.quest_idx = (game.quest_idx + 1) % len(game.quests)
+            found_next = False
+            for step in range(1, len(game.quests) + 1):
+                cand_idx = (game.quest_idx + step) % len(game.quests)
+                if game.quests[cand_idx].status != "completed":
+                    game.quest_idx = cand_idx
+                    found_next = True
+                    break
+            if not found_next:
+                # Chỉ khi tất cả nhiệm vụ đã hoàn thành hết -> Mở lại các nhiệm vụ thường ở map khác (không lặp lại nhiệm vụ vừa làm)
+                for step in range(1, len(game.quests)):
+                    cand_idx = (game.quest_idx + step) % len(game.quests)
+                    cand_q = game.quests[cand_idx]
+                    if not getattr(cand_q, "special", False) and cand_q.giver_map != game.current_map_id:
+                        cand_q.status = "available"
+                        if not found_next:
+                            game.quest_idx = cand_idx
+                            found_next = True
             new_hearts = 3
             if getattr(game, "dialogue", None) is not None:
                 new_hearts = game.dialogue.adjust_friendship(npc.name, 100)
@@ -495,10 +604,17 @@ def _interact_with_npc(game, npc: VillagerNPC):
                 f"HOÀN THÀNH [{completed_title}]! Nhận +{pts}đ, +{gold_bonus}G Vàng & +1 ♥ Thiện cảm với {npc.name}!",
                 (110, 255, 145),
             )
+            if getattr(game, "state", None) is not None and hasattr(game.state, "check_achievements_and_certifications"):
+                game.state.check_achievements_and_certifications(game)
             return
 
-    # 2. Kiểm tra Nhận Nhiệm Vụ Mới (Accept Quest)
-    if q.status == "available" and q.giver_name == npc.name:
+    # 2. Kiểm tra Nhận Nhiệm Vụ Mới (Accept Quest — chỉ nhận khi ở ngoài trời đúng Map của người giao việc)
+    if (
+        q.status == "available"
+        and q.giver_name == npc.name
+        and not game.in_interior
+        and game.current_map_id == q.giver_map
+    ):
         if q.category == "express" and len(game.robot.inventory) >= game.robot.max_inventory:
             game.set_banner("Khay đồ đã đầy, không thể nhận Kiện Hàng Chuyển Phát Nhanh!", (255, 175, 95))
             return
@@ -524,31 +640,39 @@ def _interact_with_npc(game, npc: VillagerNPC):
         )
         return
 
-    # 3. Nếu người chơi nói chuyện với một NPC giao nhiệm vụ khác trong danh sách -> Tự chuyển sang nhiệm vụ của NPC đó!
-    for idx, other_q in enumerate(game.quests):
-        if other_q.status == "available" and other_q.giver_name == npc.name:
-            game.quest_idx = idx
-            other_q.status = "accepted"
-            npc.handoff_timer = 1.2
-            npc.trigger_emote("!", 2.5)
-            game.add_score(SCORE_ACCEPT_QUEST, "Đứng đúng Quạt Xanh & Nhận việc!")
-            if other_q.category == "express" and len(game.robot.inventory) < game.robot.max_inventory:
-                game.robot.add_item(other_q.item_key)
-            if other_q.bonus_time_limit > 0.0:
-                other_q.bonus_timer = other_q.bonus_time_limit
-            if getattr(game, "dialogue", None) is not None:
-                new_hearts = game.dialogue.adjust_friendship(npc.name, 50)
-                game.dialogue.open_dialogue(
-                    npc,
-                    f"Nhận Nhiệm Vụ — {other_q.title}",
-                    f"Cảm ơn FarmBot đã ghé hỏi thăm! Nhờ bạn giúp mình: {other_q.source_hint}. Rồi mang [{other_q.item_label}] tới cho {other_q.receiver_name} tại {other_q.receiver_place} nhé!",
-                    reward_badge=f"+{SCORE_ACCEPT_QUEST}đ | Thiện cảm: {new_hearts}/5 ♥",
+    # 3. Nếu chưa có nhiệm vụ đang làm dở ('accepted') và nói chuyện với một NPC giao việc ở đúng Map ngoài trời -> Tự chuyển sang nhiệm vụ của NPC đó!
+    if q.status != "accepted" and not game.in_interior:
+        for idx, other_q in enumerate(game.quests):
+            if (
+                other_q.status == "available"
+                and other_q.giver_name == npc.name
+                and other_q.giver_map == game.current_map_id
+            ):
+                if other_q.category == "express" and len(game.robot.inventory) >= game.robot.max_inventory:
+                    game.set_banner("Khay đồ đã đầy, không thể nhận Kiện Hàng Chuyển Phát Nhanh!", (255, 175, 95))
+                    return
+                game.quest_idx = idx
+                other_q.status = "accepted"
+                npc.handoff_timer = 1.2
+                npc.trigger_emote("!", 2.5)
+                game.add_score(SCORE_ACCEPT_QUEST, "Đứng đúng Quạt Xanh & Nhận việc!")
+                if other_q.category == "express" and len(game.robot.inventory) < game.robot.max_inventory:
+                    game.robot.add_item(other_q.item_key)
+                if other_q.bonus_time_limit > 0.0:
+                    other_q.bonus_timer = other_q.bonus_time_limit
+                if getattr(game, "dialogue", None) is not None:
+                    new_hearts = game.dialogue.adjust_friendship(npc.name, 50)
+                    game.dialogue.open_dialogue(
+                        npc,
+                        f"Nhận Nhiệm Vụ — {other_q.title}",
+                        f"Cảm ơn FarmBot đã ghé hỏi thăm! Nhờ bạn giúp mình: {other_q.source_hint}. Rồi mang [{other_q.item_label}] tới cho {other_q.receiver_name} tại {other_q.receiver_place} nhé!",
+                        reward_badge=f"+{SCORE_ACCEPT_QUEST}đ | Thiện cảm: {new_hearts}/5 ♥",
+                    )
+                game.set_banner(
+                    f"ĐÃ NHẬN NHIỆM VỤ [{other_q.title}] từ {npc.name} (+20đ)!",
+                    (135, 248, 165),
                 )
-            game.set_banner(
-                f"ĐÃ NHẬN NHIỆM VỤ [{other_q.title}] từ {npc.name} (+20đ)!",
-                (135, 248, 165),
-            )
-            return
+                return
 
     # 4. Nhắc nhở nếu NPC đang chờ vật phẩm
     if q.status == "accepted" and q.receiver_name == npc.name:

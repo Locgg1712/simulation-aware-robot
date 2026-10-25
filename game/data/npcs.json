@@ -238,39 +238,6 @@
     "sprite": "npc_06_farmer_girl",
     "movement": "patrol"
   },
-  "Anh Alex": {
-    "role": "Vận động viên thu hoạch",
-    "age_group": "adult",
-    "safety_radius_m": 1.25,
-    "personality": "Khỏe khoắn, tự tin, đam mê thể thao và luôn hướng tới việc nâng cao thể lực.",
-    "home_id": "house_george",
-    "loved_items": [
-      "bread",
-      "orange",
-      "pumpkin"
-    ],
-    "liked_items": [
-      "apple",
-      "corn",
-      "carrot"
-    ],
-    "hated_items": [
-      "mushroom",
-      "wild_berry"
-    ],
-    "perk_3_hearts": "Alex hướng dẫn cách tối ưu tải trọng giúp Robot chở nông sản không bị rung lắc.",
-    "perk_5_hearts": "Mở khóa Đơn Đặt Hàng Đặc Biệt Tập Luyện Nông Vụ thưởng x1.5 Vàng & Điểm.",
-    "rumor": "Chạy bộ quanh bờ hồ buổi sáng mang lại nguồn sinh lực tuyệt vời nhất cho cả ngày dài!",
-    "dialogues": {
-      "low": "Yo FarmBot! Hôm nay động cơ của cậu hoạt động hết công suất chưa đấy?",
-      "mid": "Tôi vừa tập xong 200 cái hít đất! Nâng thùng nông sản giúp cơ bắp săn chắc lắm đấy nhé.",
-      "high": "Cậu bền bỉ như một vận động viên vô địch vậy! Tôi rất tôn trọng tinh thần làm việc của cậu.",
-      "morning": "Khởi động chạy bộ buổi sáng ven hồ nước cùng một quả cam mọng là hết ý!",
-      "afternoon": "Giờ tập tạ buổi trưa xong là người thấy sảng khoái hẳn ra.",
-      "evening": "Chuẩn bị nạp năng lượng bằng một bữa tối giàu protein từ bác Gus đây.",
-      "rain": "Mưa thì tập thể lực trong hiên nhà, không có lý do gì để lười biếng cả!"
-    }
-  },
   "Ngư phủ Willy": {
     "role": "Thợ câu lão luyện",
     "age_group": "elder",
@@ -809,6 +776,42 @@
       "afternoon": "Cậu làm việc nhanh mà vẫn an toàn, tôi phục đấy.",
       "evening": "Được rồi, cậu là bạn tôi. Đừng kể với ai nhé.",
       "rain": "Mưa thì luống ruộng lầy lội, đi cẩn thận."
+    }
+  },
+  "Cô Caroline": {
+    "role": "Cửa Hàng Hạt Giống [E]",
+    "age_group": "adult",
+    "safety_radius_m": 1.25,
+    "personality": "Dịu dàng, yêu thích làm vườn nhà kính và cung cấp mọi loại hạt giống nông sản chất lượng cho nông trại.",
+    "home_id": "pierre_shop",
+    "loved_items": [
+      "strawberry",
+      "golden_flower",
+      "tomato"
+    ],
+    "liked_items": [
+      "wheat",
+      "carrot",
+      "cabbage",
+      "corn"
+    ],
+    "hated_items": [
+      "fish",
+      "parcel"
+    ],
+    "perk_3_hearts": "Cô Caroline tặng thêm 1 gói hạt giống miễn phí vào đầu mỗi mùa mới.",
+    "perk_5_hearts": "Mở khóa giống cây trồng năng suất cao tại Cửa Hàng Hạt Giống.",
+    "rumor": "Hạt giống được tưới nước đều đặn mỗi ngày hoặc gặp trời mưa rào sẽ lớn rất đúng lịch!",
+    "sprite": "npc_purple",
+    "movement": "stationary",
+    "dialogues": {
+      "low": "Chào FarmBot! Muốn trồng rau củ thì ghé quầy hạt giống của cô bấm [E] để chọn mua hạt nhé.",
+      "mid": "Những luống cây cháu trồng và tưới nước mỗi ngày trông xanh tốt quá!",
+      "high": "Cháu là nông gia cơ khí chăm chỉ nhất thung lũng! Cô luôn chuẩn bị sẵn hạt giống tốt nhất cho cháu.",
+      "morning": "Buổi sáng là thời điểm lý tưởng nhất để gieo hạt và tưới nước cho ruộng!",
+      "afternoon": "Nhớ kiểm tra xem các thửa ruộng đã được tưới nước đầy đủ trước khi đi ngủ nhé.",
+      "evening": "Qua một đêm nghỉ ngơi tại Đế Sạc, những luống cây được tưới nước sẽ lớn thêm 1 ngày!",
+      "rain": "Hôm nay trời mưa rào, mọi thửa ruộng ngoài trời đều được tự động tưới mát!"
     }
   }
 }

@@ -130,10 +130,14 @@ def update_safety_and_collisions(game, dt: float):
     if game.game_over:
         return
 
+    if not hasattr(game, "comfort_score"):
+        game.comfort_score = 100.0
+
     active_npcs = game.interior_npcs if game.in_interior else game.npcs
+    any_discomfort = False
 
     for npc in active_npcs:
-        if npc.is_run_over_dead:
+        if npc.is_run_over_dead or (not game.in_interior and getattr(npc, "is_home_at_night", False)):
             continue
 
         dx = game.robot.x - npc.x
@@ -182,6 +186,8 @@ def update_safety_and_collisions(game, dt: float):
 
             game.total_knockdowns += 1
             game.hearts = max(0, game.hearts - 1)
+            game.comfort_score = max(0.0, getattr(game, "comfort_score", 100.0) - 25.0)
+            any_discomfort = True
             game.emergency_flash_timer = 1.0
             game.add_score(PENALTY_KNOCKDOWN, f"Đâm ngã {npc.name}! (-1 Mạng)")
             if getattr(game, "dialogue", None) is not None:
@@ -213,9 +219,15 @@ def update_safety_and_collisions(game, dt: float):
             continue
 
         # ------------------------------------------------------------------
-        # CẤP ĐỘ 1: ĐI / ĐỨNG QUÁ SÁT XÂM PHẠM VÙNG CÁ NHÂN (d < 0.70m)
+        # CẤP ĐỘ 1 & VÙNG XÃ HỘI: XÂM PHẠM VÙNG CÁ NHÂN + CẢNH BÁO SỚM THANG ĐO COMFORT HRI (L4, D6, Pha 2)
         # ------------------------------------------------------------------
-        if HITBOX_TOUCH_M < dist_m < PERSONAL_SPACE_M:
+        npcs_db = getattr(getattr(game, "state", None), "npcs_db", {})
+        npc_info = npcs_db.get(npc.name, {}) if isinstance(npcs_db, dict) else {}
+        db_safety_r = float(npc_info.get("safety_radius_m", 1.25) or 1.25) if isinstance(npc_info, dict) else 1.25
+        personal_space_limit_m = max(PERSONAL_SPACE_M, min(1.05, db_safety_r * 0.74))
+
+        if HITBOX_TOUCH_M < dist_m < personal_space_limit_m:
+            any_discomfort = True
             npc.trigger_emote("!", 1.0)
             if dist_px > 1e-3 and npc.intrusion_step_cooldown <= 0.0:
                 step_bx = npc.x - (dx / dist_px) * 6.0
@@ -224,30 +236,121 @@ def update_safety_and_collisions(game, dt: float):
                     npc.x, npc.y = step_bx, step_by
                 npc.intrusion_step_cooldown = 0.25
 
-            game.intrusion_accum += dt
+            # Phạt mượt theo mức độ tiến sát vào vùng cá nhân + giảm Thang đo Comfort HRI
+            proximity_weight = 1.0 + max(
+                0.0,
+                (personal_space_limit_m - dist_m) / max(0.1, personal_space_limit_m - HITBOX_TOUCH_M),
+            )
+            game.comfort_score = max(0.0, game.comfort_score - 12.0 * dt * proximity_weight)
+            game.intrusion_accum += dt * proximity_weight
             if game.intrusion_accum >= 1.0:
                 game.intrusion_accum -= 1.0
                 game.add_score(
-                    PENALTY_PERSONAL_SPACE_PER_SEC, f"Đi quá sát {npc.name} (<0.70m)"
+                    PENALTY_PERSONAL_SPACE_PER_SEC, f"Đi quá sát {npc.name} (<{personal_space_limit_m:.2f}m)"
                 )
+        elif personal_space_limit_m <= dist_m < db_safety_r and game.robot.v_mps > 0.38:
+            # Cảnh báo sớm trong vùng xã hội khi Robot phóng nhanh qua gần cư dân
+            any_discomfort = True
+            game.comfort_score = max(0.0, game.comfort_score - 3.8 * dt)
+            if npc.emote_timer <= 0.0:
+                npc.trigger_emote("?", 0.8)
 
         # ------------------------------------------------------------------
-        # THƯỞNG NHƯỜNG ĐƯỜNG VĂN MINH (+5 ĐIỂM KHI CƯ DÂN CẮT NGANG)
+        # THƯỞNG NHƯỜNG ĐƯỜNG VĂN MINH (+5 ĐIỂM DỰA TRÊN VẬN TỐC TIẾN LẠI GẦN TTC & VẬN TỐC THỰC <= 0.35 m/s - L1, Pha 2)
         # ------------------------------------------------------------------
         if (
             not npc.is_stationary
             and npc.speed_mps > 0.15
-            and 1.15 <= dist_m <= 2.35
+            and 1.05 <= dist_m <= 2.35
             and npc.yield_reward_cooldown <= 0.0
         ):
             ang_to_npc = math.atan2(npc.y - game.robot.y, npc.x - game.robot.x)
-            if angle_diff_deg(game.robot.theta, ang_to_npc) <= 42.0:
-                if game.robot.is_slow_active or game.robot.v_mps <= 0.32:
+            if angle_diff_deg(game.robot.theta, ang_to_npc) <= 45.0:
+                # Tính vận tốc tiến lại gần (closing speed) giữa NPC và Robot theo trục nối tâm
+                ux = (npc.x - game.robot.x) / max(1.0, dist_px)
+                uy = (npc.y - game.robot.y) / max(1.0, dist_px)
+                npc_vx = math.cos(npc.theta) * npc.speed_mps
+                npc_vy = math.sin(npc.theta) * npc.speed_mps
+                rob_vx = math.cos(game.robot.theta) * game.robot.v_mps
+                rob_vy = math.sin(game.robot.theta) * game.robot.v_mps
+                closing_mps = (rob_vx - npc_vx) * ux + (rob_vy - npc_vy) * uy
+                if (
+                    game.robot.v_mps <= 0.35
+                    and (game.robot.is_slow_active or game.robot.v_mps > 0.02)
+                    and closing_mps >= -0.15
+                ):
                     npc.yield_reward_cooldown = 12.0
                     npc.trigger_emote("♥", 2.2)
+                    game.comfort_score = min(100.0, game.comfort_score + 4.0)
                     game.add_score(SCORE_SMART_YIELD, f"Nhường đường cho {npc.name}!")
+                    if getattr(game, "state", None) is not None:
+                        game.state.total_yields = getattr(game.state, "total_yields", 0) + 1
+                        if hasattr(game.state, "check_achievements_and_certifications"):
+                            game.state.check_achievements_and_certifications(game)
                     if getattr(game, "dialogue", None) is not None:
                         game.dialogue.adjust_friendship(npc.name, 15)
+
+    # Hồi phục chậm Thang đo Comfort HRI khi giữ khoảng cách an toàn, hoặc phạt khi chạm đáy
+    if not any_discomfort:
+        game.comfort_score = min(100.0, game.comfort_score + 2.2 * dt)
+    elif game.comfort_score <= 0.0:
+        game.comfort_score = 45.0
+        game.add_score(-35, "Chỉ số An Tâm HRI chạm đáy (0%)!")
+        game.set_banner(
+            "CẢNH BÁO HRI: Chỉ số An Tâm cư dân chạm đáy (0%)! Bị trừ -35đ uy tín. Hãy đi chậm [X] khi gần người!",
+            (255, 130, 95),
+        )
+
+    # ------------------------------------------------------------------
+    # TƯƠNG TÁC ĐẨY NHẸ HOẶC VA CHẠM VỚI XE KÉO NÔNG SẢN AGV (V4 + Cơ chế Đẩy AGV)
+    # ------------------------------------------------------------------
+    if not game.in_interior and game.robot.stun_timer <= 0.0:
+        for agv in getattr(game, "agvs", []):
+            dist_agv = math.hypot(game.robot.x - agv.x, game.robot.y - agv.y)
+            touch_d = agv.radius + game.robot.radius - 2.0
+            if dist_agv <= touch_d:
+                ux = (agv.x - game.robot.x) / max(1.0, dist_agv)
+                uy = (agv.y - game.robot.y) / max(1.0, dist_agv)
+                if abs(ux) + abs(uy) < 1e-3:
+                    ux, uy = math.cos(game.robot.theta), math.sin(game.robot.theta)
+
+                # Nếu Robot đi chậm (<= 0.65 m/s) hoặc AGV đang ở chế độ đi theo/đỗ -> Đẩy nhẹ AGV dịch đi mượt mà
+                is_gentle_push = (
+                    getattr(agv, "mode", "patrol") in ("follow", "parked")
+                    or (0.02 < game.robot.v_mps <= 0.65)
+                    or getattr(game.robot, "is_slow_active", False)
+                )
+                if is_gentle_push:
+                    if hasattr(agv, "apply_push"):
+                        agv.apply_push(ux, uy, strength=130.0)
+                    step_push = max(6.0, touch_d - dist_agv + 4.0)
+                    nx = agv.x + ux * step_push
+                    ny = agv.y + uy * step_push
+                    if not game.is_circle_blocked(nx, ny, agv.radius * 0.85):
+                        agv.x, agv.y = nx, ny
+                    if getattr(agv, "mode", "patrol") == "patrol":
+                        agv.mode = "parked"
+                    if getattr(game, "state", None) is not None and hasattr(game.state, "unlock_achievement"):
+                        game.state.unlock_achievement(game, "agv_partner")
+                    game.set_banner(
+                        "Đã đẩy nhẹ Xe Kéo AGV sang một bên! Bấm [E] hoặc [C] cạnh AGV để gọi đi theo làm việc.",
+                        (165, 240, 195),
+                    )
+                else:
+                    # Phóng tốc độ cao đâm trực diện vào AGV đang chạy tuần tra -> Phạt -15đ
+                    if hasattr(agv, "apply_push"):
+                        agv.apply_push(ux, uy, strength=95.0)
+                    game.robot.apply_knockback(agv.x, agv.y, game)
+                    game.add_score(-15, "Va chạm mạnh Xe Kéo Nông Sản AGV!")
+                    if getattr(game, "audio", None) is not None:
+                        game.audio.play_sfx("bump")
+                    if getattr(game, "vfx", None) is not None:
+                        game.vfx.trigger_shake(4.5, 0.25)
+                    game.set_banner(
+                        "Cẩn thận! Bạn vừa phóng nhanh đâm vào Xe Kéo AGV (-15đ). Hãy đi chậm [X] để đẩy nhẹ hoặc bấm [E]/[C] gọi AGV đi theo!",
+                        (255, 175, 95),
+                    )
+                break
 
 
 def _trigger_instant_run_over(game, npc: VillagerNPC, reason_text: str):

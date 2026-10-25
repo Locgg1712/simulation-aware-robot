@@ -56,6 +56,21 @@ SEASON_NAMES_VI: dict[str, str] = {
 }
 
 
+def compute_clock_hour(sim_time: float) -> float:
+    """Công thức đồng hồ chuẩn duy nhất toàn game (chu kỳ 24 giờ đầy đủ 07:00 -> 24:00 -> 07:00, cho phép làm việc xuyên đêm)."""
+    return (7.0 + ((sim_time * 4.0) % (24.0 * 60.0)) / 60.0) % 24.0
+
+
+def format_clock_string(sim_time: float, round_ten_min: bool = False) -> str:
+    """Định dạng chuỗi đồng hồ HH:MM từ sim_time."""
+    hour_val = compute_clock_hour(sim_time)
+    h = int(hour_val)
+    m = int((hour_val - h) * 60.0)
+    if round_ten_min:
+        m = (m // 10) * 10
+    return f"{h:02d}:{m:02d}"
+
+
 class PetalParticle:
     """Cánh hoa anh đào mùa xuân rơi chéo nhẹ nhàng, lắc lư hình sin qua màn hình ngoài trời."""
 
@@ -551,13 +566,17 @@ class AtmosphereManager:
     def cycle_season(self, game: Any = None) -> str:
         """
         Chuyển sang mùa tiếp theo trong 4 mùa ('spring' -> 'summer' -> 'fall' -> 'winter').
-        Đồng bộ với game.state.season_idx nếu có và trả về tên tiếng Việt tương ứng.
+        Đồng bộ cả game.state.season_idx và game.state.day (mỗi mùa 5 ngày) để không bị lệch khi qua ngày.
         """
         self.current_season_idx = (self.current_season_idx + 1) % len(self.seasons)
         if game is not None:
             state = getattr(game, "state", None)
             if state is not None and hasattr(state, "season_idx"):
                 state.season_idx = self.current_season_idx
+                day_in_season = ((getattr(state, "day", 1) - 1) % 5) + 1
+                year_Idx = (getattr(state, "day", 1) - 1) // 20
+                state.day = year_Idx * 20 + self.current_season_idx * 5 + day_in_season
+                state.festival_active = (day_in_season == 3)
         return self.current_season_name
 
     @property
@@ -576,18 +595,12 @@ class AtmosphereManager:
         return self.current_weather_name
 
     def get_clock_hour(self, sim_time: float) -> float:
-        """
-        Tính giờ trong game từ 7.0 (07:00 sáng) đến 22.0 (22:00 đêm) theo công thức chuẩn:
-        7.0 + ((sim_time * 4.0) % (15.0 * 60.0)) / 60.0
-        """
-        return 7.0 + ((sim_time * 4.0) % (15.0 * 60.0)) / 60.0
+        """Tính giờ trong game từ 7.0 (07:00 sáng) đến 22.0 (22:00 đêm)."""
+        return compute_clock_hour(sim_time)
 
     def get_clock_string(self, sim_time: float) -> str:
         """Định dạng chuỗi giờ phút hiển thị trên HUD (ví dụ: '08:30', '18:15')."""
-        hour_val = self.get_clock_hour(sim_time)
-        h = int(hour_val)
-        m = int((hour_val - h) * 60.0)
-        return f"{h:02d}:{m:02d}"
+        return format_clock_string(sim_time, round_ten_min=False)
 
     def update(self, game: Any, dt: float):
         """
@@ -619,9 +632,8 @@ class AtmosphereManager:
                 if not sp.update(dt):
                     self.rain_splashes.remove(sp)
 
-            # Mưa rào: tự động tăng tốc độ mọc lại của cây trồng thêm 0.5 * dt
-            all_spots = getattr(game, "harvest_spots", []) + getattr(game, "deco_fields", [])
-            for spot in all_spots:
+            # Mưa rào: chỉ áp dụng cho ruộng trang trí (deco_fields); ruộng thật lớn theo ngày
+            for spot in getattr(game, "deco_fields", []):
                 if not spot.has_produce and getattr(spot, "regrow_timer", 0.0) > 0.0:
                     spot.regrow_timer = max(0.0, spot.regrow_timer - 0.5 * dt)
 
@@ -634,17 +646,15 @@ class AtmosphereManager:
                 for snow in self.snowflakes:
                     snow.update(dt)
 
-        # 3. Cập nhật đom đóm khi trời chiều tối (hour >= 17.5)
-        if hour >= 17.5:
+        # 3. Cập nhật đom đóm khi trời chiều tối và ban đêm (hour >= 17.5 hoặc hour < 5.8)
+        if hour >= 17.5 or hour < 5.8:
             for ff in self.fireflies:
                 ff.update(dt)
 
-        # 4. Hiệu ứng Vòi tưới Sprinkler: tăng tốc độ mọc lại cho các thửa ruộng có vòi tưới
-        all_field_spots = getattr(game, "harvest_spots", []) + getattr(game, "deco_fields", [])
-        for spot in all_field_spots:
+        # 4. Hiệu ứng Vòi tưới Sprinkler: chỉ giảm regrow_timer cho ruộng trang trí (deco_fields)
+        for spot in getattr(game, "deco_fields", []):
             if getattr(spot, "field_rect", None) is not None:
                 if not spot.has_produce and getattr(spot, "regrow_timer", 0.0) > 0.0:
-                    # Vòi tưới tưới ẩm liên tục giúp cây trồng lớn nhanh thêm 0.7 * dt
                     spot.regrow_timer = max(0.0, spot.regrow_timer - 0.7 * dt)
 
     def render_sprinklers(self, screen: pygame.Surface, game: Any):
@@ -905,21 +915,25 @@ class AtmosphereManager:
                 for snow in self.snowflakes:
                     snow.draw(screen)
 
-        # Vẽ đom đóm khi chiều tối (hour >= 17.5)
+        # Vẽ đom đóm khi chiều tối và ban đêm (hour >= 17.5 hoặc hour < 5.8)
         hour = self.get_clock_hour(game.sim_time)
-        if hour >= 17.5:
+        if hour >= 17.5 or hour < 5.8:
             for ff in self.fireflies:
                 ff.draw(screen)
 
-        # 4. Tính màu phủ môi trường theo giờ trong game
+        # 4. Tính màu phủ môi trường theo giờ trong game (Hỗ trợ đầy đủ 24 giờ làm việc cả ngày lẫn đêm)
         ambient_rgba: tuple[int, int, int, int] | None = None
-        if hour < 15.5:
+        if 6.0 <= hour < 7.0:
+            # 06:00 - 07:00: Bình minh hửng sáng
+            ratio = 1.0 - (hour - 6.0)
+            ambient_rgba = (255, 175, 110, int(max(0.0, min(1.0, ratio)) * 38))
+        elif 7.0 <= hour < 15.5:
             # 07:00 - 15:30: Ban ngày trong trẻo (nếu mưa thì phủ lớp xanh xám nhẹ)
             if mode == "rain":
                 ambient_rgba = (28, 42, 68, 38)
             else:
                 ambient_rgba = None
-        elif hour < 18.0:
+        elif 15.5 <= hour < 18.0:
             # 15:30 - 18:00: Hoàng hôn Stardew chuyển dần sang cam hồng ấm áp
             ratio = (hour - 15.5) / (18.0 - 15.5)
             alpha = int(max(0.0, min(1.0, ratio)) * 52)
@@ -928,9 +942,12 @@ class AtmosphereManager:
             else:
                 ambient_rgba = (255, 138, 68, alpha)
         else:
-            # 18:00 - 22:00: Ban đêm xanh thẫm
-            ratio = (hour - 18.0) / (22.0 - 18.0)
-            alpha = int(45 + max(0.0, min(1.0, ratio)) * 65)  # 45 -> 110
+            # 18:00 - 06:00 sáng: Ban đêm xanh thẫm (vừa đủ rõ để Robot bật đèn pha làm việc ca đêm)
+            if hour >= 18.0:
+                ratio = min(1.0, (hour - 18.0) / 4.0)
+            else:
+                ratio = 1.0 if hour < 4.8 else max(0.2, (6.0 - hour) / 1.2)
+            alpha = int(45 + max(0.0, min(1.0, ratio)) * 60)  # 45 -> 105
             ambient_rgba = (14, 20, 48, alpha)
 
         # 5. Phủ bóng tối và đục lỗ ánh sáng trên _light_surf
@@ -938,7 +955,7 @@ class AtmosphereManager:
         if ambient_rgba is not None and ambient_rgba[3] > 0:
             self._light_surf.fill(ambient_rgba)
 
-        is_dark = (hour >= 17.2) or (mode == "rain")
+        is_dark = (hour >= 17.2 or hour < 6.2) or (mode == "rain")
 
         # Khi trời tối hoặc mưa: Đục lỗ bóng tối tại các nguồn sáng
         if is_dark:

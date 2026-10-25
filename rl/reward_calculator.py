@@ -10,16 +10,16 @@ from human.human_agent import SocialContext
 class RewardCalculator:
     """
     Tính toán hàm phần thưởng đa mục tiêu tại mỗi bước thời gian t (Mục 9.3):
-        R_t = R_terminal + R_progress + R_time + R_social + R_context
+        R_t = R_terminal + R_progress + R_time + R_social + R_group + R_context
     """
 
     def __init__(self, reward_cfg: dict | None = None):
         cfg = reward_cfg or {}
         self.goal_reward: float = float(cfg.get("goal_reward", 100.0))
         self.collision_penalty: float = float(cfg.get("collision_penalty", -100.0))
-        self.progress_weight: float = float(cfg.get("progress_weight", 2.5))
+        self.progress_weight: float = float(cfg.get("progress_weight", 3.5))
         self.time_penalty: float = float(cfg.get("time_penalty", -0.05))
-        self.smart_wait_bonus: float = float(cfg.get("smart_wait_bonus", 0.2))
+        self.smart_wait_bonus: float = float(cfg.get("smart_wait_bonus", 0.25))
         self.use_social_reward: bool = bool(cfg.get("use_social_reward", True))
 
     def compute(
@@ -45,23 +45,29 @@ class RewardCalculator:
         elif world.is_goal_reached:
             r_terminal = self.goal_reward
 
-        # 2. Progress Reward: w_p * (d_{t-1} - d_t)
-        # Kết hợp độ tiến gần tới Local Sub-goal và Global Goal để tránh nhảy bước khi Sub-goal trượt
+        # 2. Progress & Heading Shaping: w_p * (d_{t-1} - d_t) + thưởng bám hướng Sub-goal
         curr_goal_dist = robot.distance_to_goal()
         curr_subgoal_dist = world.subgoal_info["dist_to_subgoal"]
         delta_goal = prev_goal_dist - curr_goal_dist
         delta_subgoal = prev_subgoal_dist - curr_subgoal_dist
 
-        # Khi Sub-goal trượt dọc đường A*, delta_subgoal có thể âm nhẹ dù robot đang tiến về Goal;
-        # lấy trung bình có trọng số với delta_goal và giới hạn biên theo vận tốc tối đa
         max_step_dist = robot.v_max * world.dt * 1.2
         clamped_delta_sg = max(-max_step_dist, min(max_step_dist, delta_subgoal))
         clamped_delta_g = max(-max_step_dist, min(max_step_dist, delta_goal))
-        effective_progress = 0.6 * clamped_delta_sg + 0.4 * clamped_delta_g
-        r_progress = self.progress_weight * effective_progress
+        effective_progress = 0.65 * clamped_delta_sg + 0.35 * clamped_delta_g
 
-        # 3. Time Penalty (-0.05 mỗi bước dt)
+        ang_err = abs(world.subgoal_info["angle_to_subgoal"])
+        heading_bonus = 0.0
+        if robot.v > 0.1 and ang_err < 0.45:
+            heading_bonus = 0.06 * math.cos(ang_err) * (robot.v / max(1e-5, robot.v_max))
+
+        r_progress = self.progress_weight * effective_progress + heading_bonus
+
+        # 3. Time Penalty (-0.05 mỗi bước dt) + phạt nhẹ nếu đứng yên vô cớ (tránh kẹt local optimum đứng im)
         r_time = self.time_penalty
+        has_wait_ctx = self._has_valid_wait_context(world)
+        if robot.v < 0.02 and not has_wait_ctx and not world.is_goal_reached:
+            r_time -= 0.08
 
         # 4. Social Space Penalty & Group Splitting Penalty
         r_social = 0.0
@@ -71,7 +77,7 @@ class RewardCalculator:
             r_social = float(soc.get("social_penalty", 0.0))
             r_group = float(soc.get("group_penalty", 0.0))
 
-        # 5. Context Behavior Reward (Smart Wait Bonus: +0.2 / bước)
+        # 5. Context Behavior Reward (Smart Wait Bonus)
         # Khuyến khích chọn WAIT hoặc SLOW_DOWN khi có người đang CROSSING hoặc cửa đang OPENING trước mặt
         r_context = 0.0
         if self.use_social_reward and action is not None:
@@ -81,7 +87,7 @@ class RewardCalculator:
                 act_enum = None
 
             if act_enum in (RobotAction.WAIT, RobotAction.SLOW_DOWN, RobotAction.STOP):
-                if self._has_valid_wait_context(world):
+                if has_wait_ctx:
                     r_context = self.smart_wait_bonus
 
         total_reward = (

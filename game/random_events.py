@@ -47,7 +47,7 @@ FALLBACK_EVENTS: dict[str, dict[str, Any]] = {
         "y_tile": 11.5,
         "reward_gold": 120,
         "reward_score": 80,
-        "reward_item": "golden_flower",
+        "reward_item": "iridium_ore",
         "reward_quality": 3,
         "duration": 95.0,
     },
@@ -206,14 +206,18 @@ class RandomEventManager:
         if event_id is not None and event_id in self.events_db:
             chosen_key = event_id
         else:
-            # Ưu tiên chọn sự kiện khác với sự kiện gần nhất để tạo tính đa dạng
+            # Ưu tiên chọn sự kiện khác với sự kiện gần nhất và ưu tiên cùng bản đồ hiện tại
             available_keys = list(self.events_db.keys())
-            if len(available_keys) > 1 and self.event_history:
-                last_event = self.event_history[-1]
-                candidates = [k for k in available_keys if k != last_event]
-                chosen_key = random.choice(candidates if candidates else available_keys)
+            last_event = self.event_history[-1] if (len(available_keys) > 1 and self.event_history) else None
+            candidates = [k for k in available_keys if k != last_event] or available_keys
+            cur_map = getattr(game, "current_map_id", 1)
+            same_map_candidates = [
+                k for k in candidates if self.events_db[k].get("map_id", 1) == cur_map
+            ]
+            if same_map_candidates and random.random() < 0.72:
+                chosen_key = random.choice(same_map_candidates)
             else:
-                chosen_key = random.choice(available_keys)
+                chosen_key = random.choice(candidates)
 
         # Khởi tạo bản sao sự kiện đang hoạt động
         template = self.events_db[chosen_key]
@@ -225,6 +229,11 @@ class RandomEventManager:
         y_tile = float(ev.get("y_tile", 12.0))
         ev["px"] = x_tile * 32.0
         ev["py"] = y_tile * 32.0
+        ev["stage"] = 1
+        ev["mining_progress"] = 0.0
+        ev["mining_required"] = 1.5
+        ev["ospace_warn_cd"] = 0.0
+        ev["startled_cd"] = 0.0
 
         # Cài đặt thời gian đếm ngược
         duration = float(ev.get("duration", 90.0))
@@ -232,7 +241,7 @@ class RandomEventManager:
         self.event_timer = duration
         self.event_history.append(chosen_key)
 
-        # 1. Chuyển đổi thời tiết nếu sự kiện yêu cầu
+        # 1. Chuyển đổi thời tiết & kích hoạt hiệu ứng tức thời cho Cơn Mưa Rào Lộc Xuân (sudden_squall)
         if ev.get("weather_override") == "rain" and hasattr(game, "atmosphere") and game.atmosphere:
             atm = game.atmosphere
             try:
@@ -242,6 +251,20 @@ class RandomEventManager:
                     atm.current_weather_idx = 2
             except Exception:
                 pass
+        if chosen_key == "sudden_squall":
+            # Thúc đẩy toàn bộ cây trồng trên bản đồ hiện tại chín nhanh +55% và sinh thêm nấm rừng/quả mọng
+            for spot in getattr(game, "harvest_spots", []):
+                if not getattr(spot, "ready", True):
+                    regen = float(getattr(spot, "regen_time", 20.0))
+                    spot.timer = min(regen, float(getattr(spot, "timer", 0.0)) + regen * 0.55)
+                    if spot.timer >= regen:
+                        spot.ready = True
+            state = getattr(game, "state", None)
+            if state is not None and hasattr(state, "forage_items"):
+                from .game_state import ForageItem
+                cur_m = getattr(game, "current_map_id", 1)
+                state.forage_items.append(ForageItem("mushroom", 14.5 * 32.0, 13.5 * 32.0, cur_m, False, 1))
+                state.forage_items.append(ForageItem("wild_berry", 16.5 * 32.0, 14.2 * 32.0, cur_m, False, 1))
 
         # 2. Phát âm thanh chuông báo SFX
         if hasattr(game, "audio") and game.audio and hasattr(game.audio, "play_sfx"):
@@ -319,13 +342,61 @@ class RandomEventManager:
         self.anim_time += dt
 
         if self.active_event is not None:
+            ev = self.active_event
+            ev_id = ev.get("id", "")
+            cur_map = getattr(game, "current_map_id", 1)
+            in_interior = getattr(game, "in_interior", False)
+            robot = getattr(game, "robot", None)
+
+            if ev.get("ospace_warn_cd", 0.0) > 0.0:
+                ev["ospace_warn_cd"] = max(0.0, float(ev["ospace_warn_cd"]) - dt)
+            if ev.get("startled_cd", 0.0) > 0.0:
+                ev["startled_cd"] = max(0.0, float(ev["startled_cd"]) - dt)
+
+            # Cơ chế động theo khung hình cho từng sự kiện khi Robot ở cùng bản đồ
+            if not in_interior and cur_map == ev.get("map_id", 1) and robot is not None:
+                px = float(ev.get("px", 0.0))
+                py = float(ev.get("py", 0.0))
+                dist = math.hypot(robot.x - px, robot.y - py)
+
+                # (A) Cừu non đi lạc (runaway_animals): Hoảng sợ bỏ chạy nếu Robot lao tới nhanh (> 0.38 m/s)
+                if ev_id == "runaway_animals" and dist < 115.0 and getattr(robot, "v_mps", 0.0) > 0.38 and not getattr(robot, "is_slow_active", False):
+                    ux = (px - robot.x) / max(1.0, dist)
+                    uy = (py - robot.y) / max(1.0, dist)
+                    ev["px"] = max(160.0, min(960.0, px + ux * 64.0 * dt))
+                    ev["py"] = max(160.0, min(600.0, py + uy * 64.0 * dt))
+                    if ev.get("startled_cd", 0.0) <= 0.0:
+                        ev["startled_cd"] = 2.0
+                        if hasattr(game, "set_banner"):
+                            game.set_banner(
+                                "Cừu non hoảng sợ chạy trốn! Hãy bật Chế độ Đi Chậm [X] khi tiếp cận chú cừu!",
+                                (255, 195, 95),
+                            )
+
+                # (B) Hội họp O-Space (spontaneous_gathering): Phạt nếu Robot cắt ngang tâm vòng tròn O-Space (< 32 px)
+                elif ev_id == "spontaneous_gathering" and dist < 32.0 and ev.get("ospace_warn_cd", 0.0) <= 0.0:
+                    ev["ospace_warn_cd"] = 3.0
+                    if hasattr(game, "add_score"):
+                        game.add_score(-15, "Cắt ngang tâm vòng tròn giao tiếp O-Space!", px, py)
+                    if hasattr(game, "comfort_score"):
+                        game.comfort_score = max(0.0, float(game.comfort_score) - 12.0)
+                    if hasattr(game, "set_banner"):
+                        game.set_banner(
+                            "VI PHẠM O-SPACE (-15đ): Đừng cắt ngang giữa vòng tròn cư dân! Hãy đứng ở rìa ngoài (35-76px) đi chậm [X] và bấm [E].",
+                            (255, 120, 95),
+                        )
+
             self.event_timer -= dt
             if self.event_timer <= 0.0:
-                old_title = self.active_event.get("title", "Sự kiện")
+                old_title = ev.get("title", "Sự kiện")
+                # Nếu đang giao đơn cấp cứu [SOS] bước 2 mà để hết giờ -> phạt trễ hẹn
+                if ev_id == "flash_express_order" and ev.get("stage", 1) == 2:
+                    if hasattr(game, "add_score"):
+                        game.add_score(-25, "Trễ đơn cấp cứu y tế [SOS]!")
                 # Đóng sự kiện do hết thời gian
                 self.active_event = None
                 self.event_timer = 0.0
-                self.cooldown_timer = 55.0
+                self.cooldown_timer = 85.0
 
                 # Thông báo hết giờ cho người chơi
                 if hasattr(game, "vfx") and game.vfx and hasattr(game.vfx, "push_toast"):
@@ -352,7 +423,7 @@ class RandomEventManager:
             self.cooldown_timer -= dt
             if self.cooldown_timer <= 0.0:
                 self.trigger_random_event(game)
-                self.cooldown_timer = 55.0
+                self.cooldown_timer = 85.0
 
     # --------------------------------------------------------------------------
     # TƯƠNG TÁC SỰ KIỆN (BẤM PHÍM [E])
@@ -383,15 +454,108 @@ class RandomEventManager:
         px = float(self.active_event.get("px", 0.0))
         py = float(self.active_event.get("py", 0.0))
         dist = math.hypot(robot.x - px, robot.y - py)
+        ev = self.active_event
+        ev_id = ev.get("id", "")
 
-        # Ngưỡng khoảng cách tương tác cho phép: 68.0 pixel
-        if dist > 68.0:
+        # Ngưỡng khoảng cách tương tác cho phép (mở rộng 78 px cho vòng O-Space)
+        max_interact_dist = 78.0 if ev_id == "spontaneous_gathering" else 68.0
+        if dist > max_interact_dist:
             return False
+
+        # ----------------------------------------------------------------------
+        # XỬ LÝ CƠ CHẾ RIÊNG CHO TỪNG LOẠI SỰ KIỆN (PHA 2)
+        # ----------------------------------------------------------------------
+        # 1. Thiên thạch Iridium (iridium_meteor): Cần khai thác tích lũy đủ tiến trình
+        if ev_id == "iridium_meteor":
+            fast_h = bool(getattr(getattr(game, "workshop", None), "bought_status", {}).get("fast_harvest", False))
+            step_work = 0.85 if fast_h else 0.55
+            ev["mining_progress"] = float(ev.get("mining_progress", 0.0)) + step_work
+            req = float(ev.get("mining_required", 1.5))
+            if ev["mining_progress"] < req:
+                pct = min(99, int(round((ev["mining_progress"] / req) * 100)))
+                if hasattr(game, "audio") and game.audio:
+                    game.audio.play_sfx("bump")
+                if hasattr(game, "set_banner"):
+                    game.set_banner(
+                        f"Đang khai thác Thiên Thạch Iridium... ({pct}%) — Bấm [E] tiếp để tách khoáng thạch!",
+                        (215, 165, 255),
+                    )
+                return True
+
+        # 2. Tìm túi đồ Bà Evelyn (lost_item_search): Bước 1 nhặt giỏ -> Bước 2 mang tới Bà Evelyn
+        elif ev_id == "lost_item_search" and int(ev.get("stage", 1)) == 1:
+            ev["stage"] = 2
+            ev["title"] = "Trao Giỏ Thảo Dược Cho Bà Evelyn"
+            # Tìm vị trí thực tế của Bà Evelyn trên Map 1 (hoặc tọa độ mặc định trước quầy hoa)
+            target_x, target_y = 15.5 * 32.0, 10.5 * 32.0
+            for npc in getattr(game, "npcs", []):
+                if "Evelyn" in getattr(npc, "name", ""):
+                    target_x, target_y = float(npc.x), float(npc.y) + 28.0
+                    break
+            ev["px"], ev["py"] = target_x, target_y
+            if hasattr(game, "set_banner"):
+                game.set_banner(
+                    "Đã nhặt Giỏ Thảo Dược! Hãy mang tới trao cho Bà Evelyn ở Quảng Trường Map 1 bấm [E].",
+                    (135, 245, 175),
+                )
+            return True
+
+        # 3. Đơn cấp cứu y tế [SOS] (flash_express_order): Bước 1 nhận thuốc -> Bước 2 giao Trạm Y Tế
+        elif ev_id == "flash_express_order" and int(ev.get("stage", 1)) == 1:
+            ev["stage"] = 2
+            ev["title"] = "Giao Túi Cấp Cứu [SOS] Tới Trạm Xá Map 1"
+            ev["px"], ev["py"] = 20.5 * 32.0, 8.2 * 32.0
+            self.event_timer = max(self.event_timer, 65.0)
+            if hasattr(game, "set_banner"):
+                game.set_banner(
+                    "Đã nhận Túi Cấp Cứu [SOS]! Hãy giao khẩn cấp tới cửa Phòng Khám Bác Sĩ Harvey (Đông-Bắc Map 1)!",
+                    (255, 155, 125),
+                )
+            return True
+
+        # 4. Cừu non đi lạc (runaway_animals): Phải đi chậm hoặc dừng lại mới vỗ về được
+        elif ev_id == "runaway_animals":
+            if getattr(robot, "v_mps", 0.0) > 0.38 and not getattr(robot, "is_slow_active", False):
+                if hasattr(game, "set_banner"):
+                    game.set_banner(
+                        "Bạn đang đi quá nhanh khiến Cừu Non sợ! Hãy bật Đi Chậm [X] hoặc dừng lại rồi bấm [E].",
+                        (255, 185, 95),
+                    )
+                return True
+
+        # 5. Hội họp O-Space (spontaneous_gathering): Không được đứng chèn giữa tâm vòng tròn (< 30 px)
+        elif ev_id == "spontaneous_gathering":
+            if dist < 30.0:
+                if hasattr(game, "set_banner"):
+                    game.set_banner(
+                        "Hãy lùi ra rìa ngoài vòng tròn O-Space (30-78px) để tôn trọng không gian chung rồi bấm [E]!",
+                        (255, 195, 95),
+                    )
+                return True
+
+        # 6. Thương nhân du mục (traveling_merchant): Thu mua nông sản trong túi đồ với giá x1.8
+        elif ev_id == "traveling_merchant":
+            from .stardew_systems import ITEM_GOLD_PRICES
+            quest_key = getattr(getattr(game, "active_quest", None), "item_key", "") if getattr(getattr(game, "active_quest", None), "status", "") == "accepted" else ""
+            sold_count = 0
+            bonus_sale_gold = 0
+            state = getattr(game, "state", None)
+            if state is not None and hasattr(robot, "inventory") and robot.inventory:
+                for idx in range(len(robot.inventory) - 1, -1, -1):
+                    ik = robot.inventory[idx]
+                    if ik != quest_key:
+                        _, slot_obj = state.remove_inventory_at(game, idx)
+                        base_p = ITEM_GOLD_PRICES.get(ik, 45)
+                        q_mult = {0: 1.0, 1: 1.25, 2: 1.5, 3: 2.0}.get(getattr(slot_obj, "quality", 0), 1.0)
+                        bonus_sale_gold += int(round(base_p * q_mult * 1.8))
+                        sold_count += 1
+            if sold_count > 0:
+                ev["reward_gold"] = int(ev.get("reward_gold", 90)) + bonus_sale_gold
+                ev["reward_item"] = None
 
         # ----------------------------------------------------------------------
         # HOÀN THÀNH SỰ KIỆN & TRAO THƯỞNG
         # ----------------------------------------------------------------------
-        ev = self.active_event
         title = ev.get("title", "Sự Kiện")
         gold = int(ev.get("reward_gold", 0))
         score = int(ev.get("reward_score", 0))
@@ -465,7 +629,7 @@ class RandomEventManager:
         self.total_events_completed += 1
         self.active_event = None
         self.event_timer = 0.0
-        self.cooldown_timer = 55.0
+        self.cooldown_timer = 85.0
 
         return True
 
@@ -707,35 +871,25 @@ class RandomEventManager:
         gold: int,
         glow_color: tuple[int, int, int],
     ) -> None:
-        """Vẽ hộp nhãn nổi chỉ dẫn tương tác phía trên vật thể."""
-        title = self.active_event.get("title", "Sự Kiện") if self.active_event else "Sự Kiện"
-        line1 = f"[SỰ KIỆN] {title}"
-        line2 = f"[E] Tương tác (+{gold}G)"
+        """Vẽ nhãn nổi 1 dòng nhỏ gọn chỉ khi Robot đứng gần <= 115px để không che bản đồ."""
+        robot = getattr(game, "robot", None)
+        if robot is not None and math.hypot(robot.x - cx, robot.y - bottom_y) > 115.0:
+            return
 
-        font_title = self._get_font(game, "xs")
+        line1 = f"[E] Sự kiện (+{gold}G)"
         font_sub = self._get_font(game, "xs")
+        surf1 = font_sub.render(line1, True, (130, 255, 160))
 
-        surf1 = font_title.render(line1, True, (255, 242, 185))
-        surf2 = font_sub.render(line2, True, (130, 255, 160))
-
-        w = max(surf1.get_width(), surf2.get_width()) + 16
-        h = surf1.get_height() + surf2.get_height() + 8
+        w = surf1.get_width() + 12
+        h = 18
         bx = cx - w // 2
         by = bottom_y - h
 
-        # Vẽ khung nền đen mờ mỏng sang trọng
         bg_surf = pygame.Surface((w, h), pygame.SRCALPHA)
-        bg_surf.fill((20, 18, 28, 220))
+        bg_surf.fill((20, 18, 28, 195))
         screen.blit(bg_surf, (bx, by))
-
-        # Viền mỏng phát sáng nhẹ
-        pygame.draw.rect(screen, (*glow_color, 200), (bx, by, w, h), width=1, border_radius=4)
-
-        # Căn chữ vào giữa hộp
-        x1 = bx + (w - surf1.get_width()) // 2
-        x2 = bx + (w - surf2.get_width()) // 2
-        screen.blit(surf1, (x1, by + 3))
-        screen.blit(surf2, (x2, by + 4 + surf1.get_height()))
+        pygame.draw.rect(screen, (*glow_color, 190), (bx, by, w, h), width=1, border_radius=4)
+        screen.blit(surf1, (bx + 6, by + 1))
 
     # --------------------------------------------------------------------------
     # KẾT XUẤT THẺ THÔNG BÁO SỰ KIỆN TRÊN HUD (RENDER EVENT HUD)
@@ -743,66 +897,50 @@ class RandomEventManager:
 
     def render_event_hud(self, screen: pygame.Surface, game: Any) -> None:
         """
-        Vẽ thanh thông báo sự kiện nhỏ gọn, sang trọng ở phía trên giữa màn hình:
-        - Tọa độ chuẩn: x = 292, y = 54, w = 442, h = 34.
-        - Hiển thị: [SỰ KIỆN ĐỘNG - {event_timer}s] {title} (Map {map_id}) — Phím [O]: Đổi SK
-        - Hoàn toàn không dùng emoji Unicode để tránh lỗi ô vuông font chữ.
+        Vẽ thanh thông báo sự kiện 1 dòng siêu gọn ở phía trên giữa màn hình (h = 22px),
+        tự động rút gọn nội dung để chữ luôn nằm gọn 100% bên trong khung thanh.
         """
         if self.active_event is None:
             return
 
-        x = 292
-        y = 68 if getattr(game, "banner_timer", 0.0) > 0.0 else 10
-        w = 442
-        h = 38
-
-        title = self.active_event.get("title", "Sự Kiện")
+        title = str(self.active_event.get("title", "Sự Kiện")).strip()
         map_id = self.active_event.get("map_id", 1)
         gold = self.active_event.get("reward_gold", 80)
         duration = float(self.active_event.get("duration", 90.0))
         remain_sec = max(0, int(self.event_timer))
 
-        # 1. Tạo bề mặt thẻ HUD bo góc cao cấp
-        hud_surf = pygame.Surface((w, h), pygame.SRCALPHA)
-
-        # Nền sẫm hiện đại bo góc
-        pygame.draw.rect(hud_surf, (22, 18, 30, 232), (0, 0, w, h), border_radius=6)
-
-        # Viền kim loại vàng bóng bẩy
-        pygame.draw.rect(hud_surf, (235, 185, 68, 235), (0, 0, w, h), width=2, border_radius=6)
-
-        # 2. Thanh tiến trình thời gian mỏng (Time Progress Bar) ở đáy thẻ
-        ratio = max(0.0, min(1.0, self.event_timer / max(1.0, duration)))
-        bar_w = int((w - 14) * ratio)
-        if ratio > 0.35:
-            bar_color = (115, 235, 155)  # Xanh ngọc an toàn
-        elif ratio > 0.15:
-            bar_color = (255, 210, 70)   # Vàng cảnh báo
-        else:
-            bar_color = (255, 95, 85)    # Đỏ khẩn cấp
-
-        if bar_w > 0:
-            pygame.draw.rect(hud_surf, bar_color, (7, h - 4, bar_w, 2), border_radius=1)
-
-        # 3. Huy hiệu tròn nhấp nháy ở góc trái
-        pulse = (math.sin(self.anim_time * 4.5) + 1.0) * 0.5
-        badge_r = int(4 + pulse * 1.5)
-        badge_color = (255, 215, 75) if ratio > 0.15 else (255, 85, 85)
-        pygame.draw.circle(hud_surf, badge_color, (15, h // 2 - 1), badge_r)
-        pygame.draw.circle(hud_surf, (255, 255, 255, 190), (15, h // 2 - 1), 2)
-
-        # Dán thẻ nền lên màn hình chính
-        screen.blit(hud_surf, (x, y))
-
-        # 4. Hiển thị 2 dòng thông tin sự kiện gọn gàng không tràn viền
         font = self._get_font(game, "xs")
-        line1_str = f"[SỰ KIỆN - {remain_sec}s] {title}"
-        line2_str = f"Tại Map {map_id} (+{gold}G) — Bấm [E] tương tác | [O]: Đổi Sự Kiện"
-        l1_surf = font.render(line1_str, True, (255, 238, 130))
-        l2_surf = font.render(line2_str, True, (210, 240, 255))
+        max_box_w = 390
+        max_text_w = max_box_w - 26
 
-        screen.blit(l1_surf, (x + 28, y + 3))
-        screen.blit(l2_surf, (x + 28, y + 18))
+        suffix = f" (M{map_id}, +{gold}G) [E]"
+        prefix = f"[SK {remain_sec}s] "
+        short_title = title
+        line_str = f"{prefix}{short_title}{suffix}"
+        while len(short_title) > 6 and font.size(line_str)[0] > max_text_w:
+            short_title = short_title[:-1].rstrip()
+            line_str = f"{prefix}{short_title}…{suffix}"
+
+        l_surf = font.render(line_str, True, (255, 238, 140))
+
+        w = min(max_box_w, l_surf.get_width() + 26)
+        h = 22
+        x = (screen.get_width() - w) // 2
+        y = 42 if getattr(game, "banner_timer", 0.0) > 0.0 else 6
+
+        hud_surf = pygame.Surface((w, h), pygame.SRCALPHA)
+        pygame.draw.rect(hud_surf, (22, 18, 30, 205), (0, 0, w, h), border_radius=5)
+        pygame.draw.rect(hud_surf, (235, 185, 68, 215), (0, 0, w, h), width=1, border_radius=5)
+
+        ratio = max(0.0, min(1.0, self.event_timer / max(1.0, duration)))
+        bar_w = int((w - 10) * ratio)
+        bar_color = (115, 235, 155) if ratio > 0.35 else ((255, 210, 70) if ratio > 0.15 else (255, 95, 85))
+        if bar_w > 0:
+            pygame.draw.rect(hud_surf, bar_color, (5, h - 3, bar_w, 2), border_radius=1)
+
+        pygame.draw.circle(hud_surf, bar_color, (11, h // 2 - 1), 3)
+        hud_surf.blit(l_surf, (18, 2))
+        screen.blit(hud_surf, (x, y))
 
     # --------------------------------------------------------------------------
     # QUẢN LÝ FONT CHỮ DỰ PHÒNG AN TOÀN

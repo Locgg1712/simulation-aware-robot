@@ -30,3 +30,10 @@ dist/
 # Runtime and game assets are intentionally versioned.
 !assets/
 !assets/**/*.png
+!sprites/
+!sprites/**/
+!sprites/**/*.png
+!sprites/**/*.json
+
+
+.AGENTS.md 

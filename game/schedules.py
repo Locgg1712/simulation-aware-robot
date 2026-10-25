@@ -15,6 +15,7 @@ import math
 from typing import TYPE_CHECKING
 import pygame
 
+from .atmosphere import compute_clock_hour, format_clock_string
 from .constants import SCREEN_H, SCREEN_W
 
 if TYPE_CHECKING:
@@ -27,13 +28,23 @@ class MinimapAndScheduleSystem:
     """
 
     def __init__(self) -> None:
-        self.show_minimap: bool = True
+        self.show_minimap: bool = False  # Mặc định ẩn để giải phóng tầm nhìn bản đồ, bấm [M] để bật/tắt
         self._cached_map_id: int = -1
         self._cached_mini_terrain: pygame.Surface | None = None
         self.current_period_name: str = "Buổi Sáng (07:00 - 11:30)"
         self.current_period_title: str = "Sáng Sớm — Chăm Vườn & Chợ Sớm"
         self.current_time_str: str = "07:00"
         self._internal_font: pygame.font.Font | None = None
+
+    # Danh sách số ít cư dân vẫn hoạt động/trực đêm ngoài trời từ 19:30 -> 06:00 (còn lại đều về nhà nghỉ ngơi)
+    NIGHT_OWL_NPCS = {
+        "Ngư phủ Willy",
+        "Kỹ sư Sebastian",
+        "Đầu bếp Gus",
+        "Cô Emily",
+        "Anh Shane",
+        "Thị trưởng Lewis",
+    }
 
     def _get_font(self, game=None) -> pygame.font.Font:
         """Lấy font chữ nhỏ cho tiêu đề Minimap, ưu tiên font có sẵn của game."""
@@ -66,48 +77,89 @@ class MinimapAndScheduleSystem:
         Trả về:
             (hour_float, time_str, period_name, target_npc_speed)
         """
-        hour = 7.0 + ((sim_time * 4.0) % (15.0 * 60.0)) / 60.0
-        h = int(hour)
-        m = int((hour - h) * 60.0)
-        time_str = f"{h:02d}:{m:02d}"
+        hour = compute_clock_hour(sim_time)
+        time_str = format_clock_string(sim_time, round_ten_min=False)
 
-        if hour < 11.5:
+        if 6.0 <= hour < 11.5:
             period_title = "Sáng Sớm — Chăm Vườn & Chợ Sớm"
-            period_name = f"{period_title} (07:00 - 11:30)"
+            period_name = f"{period_title} (06:00 - 11:30)"
             target_speed = 64.0
-        elif hour < 17.0:
+        elif 11.5 <= hour < 17.0:
             period_title = "Giữa Trưa — Dạo Phố & Câu Cá"
             period_name = f"{period_title} (11:30 - 17:00)"
             target_speed = 54.0
-        else:
+        elif 17.0 <= hour < 19.5:
             period_title = "Chiều Tối — Hóng Gió & Sum Họp"
-            period_name = f"{period_title} (17:00 - 22:00)"
+            period_name = f"{period_title} (17:00 - 19:30)"
             target_speed = 45.0
+        else:
+            period_title = "Đêm Khuya — Dân Làng Về Nhà Nghỉ Ngơi"
+            period_name = f"{period_title} (19:30 - 06:00)"
+            target_speed = 38.0
 
         return hour, time_str, period_name, target_speed
 
     def update_schedules(self, game, dt: float) -> None:
         """
-        Cập nhật lịch trình sinh hoạt cư dân theo giờ trong ngày.
-        - Điều chỉnh tốc độ tuần tra của NPC phù hợp với nhịp sinh hoạt.
-        - Cập nhật mô tả hoạt động `npc.schedule_note` cho từng nhân vật.
+        Cập nhật lịch trình sinh hoạt cư dân theo giờ trong ngày và thời tiết (Pha 2):
+        - Điều chỉnh tốc độ tuần tra và lộ trình điểm đến `patrol_points` của NPC theo buổi & trời mưa.
+        - Ban đêm (19:30 - 06:00): Đa số cư dân về nhà nghỉ ngơi (`npc.is_home_at_night = True`),
+          chỉ một số ít cư dân trực đêm (`NIGHT_OWL_NPCS`) vẫn hoạt động ngoài trời.
         """
         sim_time = getattr(game, "sim_time", 0.0)
         hour, time_str, period_name, target_speed = self.get_time_info(sim_time)
+        is_rain = (
+            getattr(getattr(game, "atmosphere", None), "current_weather", "") == "rain"
+        )
+        if is_rain:
+            target_speed *= 0.80
         self.current_period_name = period_name
         self.current_time_str = time_str
 
+        is_late_night = (hour >= 19.5 or hour < 6.0)
+        period_key = (
+            "night"
+            if is_late_night
+            else ("rain" if is_rain else ("morning" if hour < 11.5 else ("afternoon" if hour < 17.0 else "evening")))
+        )
+
         npcs: list[VillagerNPC] = getattr(game, "npcs", [])
         for npc in npcs:
-            # Điều chỉnh vận tốc tuần tra cho các NPC di chuyển
+            name = getattr(npc, "name", "Cư dân")
+            # Ban đêm (19:30 - 06:00): phần lớn cư dân đã về nhà nghỉ ngơi, chỉ số ít NIGHT_OWL_NPCS còn thức ngoài trời
+            npc.is_home_at_night = bool(is_late_night and name not in self.NIGHT_OWL_NPCS)
+
+            # Điều chỉnh vận tốc tuần tra và lộ trình điểm đến cho các NPC di chuyển
             if not getattr(npc, "is_stationary", False):
                 npc.base_speed = target_speed
+                if not hasattr(npc, "_orig_patrol_points"):
+                    npc._orig_patrol_points = list(getattr(npc, "patrol_points", []))
+                orig_pts = npc._orig_patrol_points
+                if len(orig_pts) >= 2 and getattr(npc, "_schedule_period", None) != period_key:
+                    npc._schedule_period = period_key
+                    if is_rain or is_late_night:
+                        # Khi trời mưa hoặc đêm khuya: rút ngắn lộ trình quanh hiên nhà / đèn đường
+                        npc.patrol_points = orig_pts[:2] if is_rain else orig_pts[-2:]
+                    elif period_key == "morning":
+                        npc.patrol_points = list(orig_pts)
+                    elif period_key == "afternoon":
+                        # Buổi trưa-chiều: đảo chiều lộ trình dạo phố / ra bến hồ
+                        npc.patrol_points = list(reversed(orig_pts))
+                    else:
+                        # Buổi tối: dạo quanh khu vực cuối tuyến / quảng trường ấm cúng
+                        npc.patrol_points = orig_pts[-2:]
+                    npc.wp_idx = npc.wp_idx % max(1, len(npc.patrol_points))
 
-            # Cập nhật ghi chú lịch trình sinh hoạt theo nghề nghiệp và khung giờ
+            # Cập nhật ghi chú lịch trình sinh hoạt theo nghề nghiệp, khung giờ và thời tiết
             role = getattr(npc, "role", "").lower()
-            name = getattr(npc, "name", "Cư dân")
 
-            if hour < 11.5:
+            if npc.is_home_at_night:
+                npc.schedule_note = f"{name}: Đã về nhà nghỉ ngơi buổi tối (trong nhà)"
+            elif is_late_night:
+                npc.schedule_note = f"{name}: Đang trực ca đêm / hóng gió khuya dưới ánh đèn"
+            elif is_rain:
+                npc.schedule_note = f"{name}: Trú mưa & di chuyển chậm dưới mái hiên"
+            elif hour < 11.5:
                 if "nông" in role or "vườn" in role:
                     npc.schedule_note = f"{name}: Chăm sóc cây trồng & thu hoạch sớm"
                 elif "thương" in role or "tiệm" in role or "bán" in role:
@@ -127,19 +179,17 @@ class MinimapAndScheduleSystem:
                 else:
                     npc.schedule_note = f"{name}: Dạo mát chiều tối & sum họp gia đình"
 
-    def render_minimap(self, screen: pygame.Surface, game, top_y: int = 128) -> None:
+    def render_minimap(self, screen: pygame.Surface, game, top_y: int = 58) -> None:
         """
-        Vẽ bản đồ thu nhỏ Minimap Radar ở góc trái màn hình.
-        - Kích thước: mw=148, mh=100 tại (10, top_y).
-        - Hiển thị địa hình thu nhỏ mượt mà với bộ nhớ đệm (cache).
-        - Hiển thị cổng chuyển vùng, điểm nông sản chín, NPC và Robot.
+        Vẽ bản đồ thu nhỏ Minimap Radar ở góc trái màn hình (bật/tắt bằng phím [M]).
+        - Kích thước gọn: mw=124, mh=82 tại (8, top_y).
         """
         # Không vẽ khi người chơi tắt minimap hoặc đang trong không gian nội thất Map 5
         if not self.show_minimap or getattr(game, "in_interior", False):
             return
 
-        mw, mh = 148, 100
-        rect = pygame.Rect(10, top_y, mw, mh)
+        mw, mh = 124, 82
+        rect = pygame.Rect(8, top_y, mw, mh)
 
         inner_w = mw - 8   # 140
         inner_h = mh - 22  # 78
@@ -243,8 +293,8 @@ class MinimapAndScheduleSystem:
         sim_time = getattr(game, "sim_time", 0.0)
         flash_state = int(sim_time * 6.0) % 2 == 0
 
-        # D. Vẽ các NPC
-        npcs = getattr(game, "npcs", [])
+        # D. Vẽ các NPC đang ở ngoài trời (ẩn các NPC đã về nhà nghỉ ngơi ban đêm)
+        npcs = [n for n in getattr(game, "npcs", []) if not getattr(n, "is_home_at_night", False)]
         for npc in npcs:
             nx, ny = to_mini(npc.x, npc.y)
             is_giver = giver_target is not None and npc.name == giver_target

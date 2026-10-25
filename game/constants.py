@@ -107,6 +107,7 @@ ITEM_NAMES_VI = {
     "mushroom": "Nấm Rừng Thơm",
     "wild_berry": "Quả Mọng Rừng",
     "golden_flower": "Hoa Cúc Vàng",
+    "iridium_ore": "Khoáng Thạch Iridium",
 }
 
 # Bảng quy đổi Điểm thưởng & Phạt (Mục 6)
@@ -121,6 +122,14 @@ PENALTY_PERSONAL_SPACE_PER_SEC = -5
 PENALTY_KNOCKDOWN = -100
 PENALTY_MULTI_HIT_DIE = -250
 PENALTY_RUN_OVER_DIE = -500
+
+# Vị trí Trạm Sạc Pin & Nghỉ Ngơi (Charging Dock) tại 4 Bản đồ Ngoài trời (Map 1..4)
+CHARGING_DOCKS: dict[int, tuple[float, float, str]] = {
+    1: (16.0 * TILE_SIZE, 12.2 * TILE_SIZE, "Trạm Sạc Quảng Trường"),
+    2: (18.5 * TILE_SIZE, 8.2 * TILE_SIZE, "Trạm Sạc Nông Trại"),
+    3: (8.5 * TILE_SIZE, 11.2 * TILE_SIZE, "Trạm Sạc Bến Hồ"),
+    4: (21.5 * TILE_SIZE, 10.5 * TILE_SIZE, "Trạm Sạc Xưởng Robin"),
+}
 
 
 def m_to_px(meters: float) -> float:
